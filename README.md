@@ -2,8 +2,7 @@
 
 A personal Chrome extension for saving and revisiting moments in YouTube videos. Built with WXT and React; implementation is not yet started.
 
-The agreed product behavior and boundaries live in [the project scope](docs/scope.md). The first implementation slice is specified in [storage and quick add](.scratch/storage-and-quick-add/spec.md).
-
+The agreed product behavior and boundaries live in [the project scope](docs/scope.md).
 ## Develop locally
 
 Requires Node.js and npm. From the repository root:
