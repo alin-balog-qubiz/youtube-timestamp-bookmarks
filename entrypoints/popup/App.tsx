@@ -3,20 +3,16 @@ import reactLogo from '@/assets/react.svg';
 import wxtLogo from '/wxt.svg';
 import './App.css';
 
-import {browser} from 'wxt/browser';
-
 function App() {
   const [count, setCount] = useState(0);
-
-  // console.log('browser');
 
   return (
     <>
       <div>
-        <a href="https://wxt.dev" target="_blank">
+        <a href="https://wxt.dev" target="_blank" rel="noreferrer">
           <img src={wxtLogo} className="logo" alt="WXT logo" />
         </a>
-        <a href="https://react.dev" target="_blank">
+        <a href="https://react.dev" target="_blank" rel="noreferrer">
           <img src={reactLogo} className="logo react" alt="React logo" />
         </a>
       </div>
