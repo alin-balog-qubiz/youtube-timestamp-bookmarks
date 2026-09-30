@@ -1,6 +1,8 @@
 # Storage and instant player save
 
-Status: Approved for implementation
+Status: complete
+
+Implementation notes and verification: [handoff](handoff.md).
 
 ## Goal and boundary
 
@@ -24,6 +26,8 @@ Use `wxt/utils/storage` with **local** extension storage. The conceptual persist
 Persist a numeric whole-second value, not a formatted clock string or a fractional playback time. The implementation owns the TypeScript types, key layout, and date encoding; keep consumers on one storage contract rather than introducing another store or representation. Bookmark creation should not depend on title availability. Data must remain available across page reloads and browser restarts, subject to normal local-extension storage behavior.
 
 ## Implementation constraints
+
+Follow the authoritative [project architecture](../../docs/scope.md#project-architecture); the constraints below specialize it for quick add.
 
 - Use the current active watch-page video and HTML video playback position at click time, not the time when the button was mounted. Treat an unavailable or non-finite playback position as unavailable rather than saving an invalid bookmark.
 - Ensure an already-saved result is based on persisted state, not only transient button state. A successful UI message follows a successful storage operation.
