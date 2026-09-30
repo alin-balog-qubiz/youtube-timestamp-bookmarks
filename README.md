@@ -1,8 +1,13 @@
 # YouTube Timestamp Bookmarks
 
-A personal Chrome extension for saving and revisiting moments in YouTube videos. Built with WXT and React; implementation is not yet started.
+A personal Chrome extension for saving and revisiting moments in YouTube videos. Built with WXT and React. The first slice saves moments from the player; browsing and editing are not implemented yet.
 
 The agreed product behavior and boundaries live in [the project scope](docs/scope.md).
+
+## Save a moment
+
+On a standard YouTube watch page, click the **+** control in the player toolbar. The current whole-second position is saved locally without interrupting playback. **Saved** confirms a new bookmark; **Already saved** means that video's second was previously saved. Bookmarks remain in extension storage after reload. The popup, timeline markers, and backup tools are not available yet.
+
 ## Develop locally
 
 Requires Node.js and npm. From the repository root:

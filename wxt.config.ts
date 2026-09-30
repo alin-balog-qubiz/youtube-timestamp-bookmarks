@@ -5,5 +5,6 @@ export default defineConfig({
   manifest: {
     name: 'YouTube Timestamp Bookmarks',
     description: 'Save and revisit moments in YouTube videos.',
+    permissions: ['storage'],
   },
 });
