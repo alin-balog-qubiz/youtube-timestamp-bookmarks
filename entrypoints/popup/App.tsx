@@ -127,7 +127,7 @@ export default function App() {
 
         <ContextNotice activeTabContext={activeTabContext} />
 
-        {selectedPage === 'all-videos' && <AllVideosPage />}
+        {selectedPage === 'all-videos' && <AllVideosPage activeTabContext={activeTabContext} />}
 
         <section hidden={selectedPage !== 'this-video'}>
           <ThisVideoPage activeTabContext={activeTabContext} />

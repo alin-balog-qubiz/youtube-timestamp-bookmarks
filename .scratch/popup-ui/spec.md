@@ -1,12 +1,12 @@
 # Popup UI workflow
 
-Status: in progress; 01–02 complete; 03–04 open
+Status: in progress; 01–02 complete; 03 implemented awaiting user verification; 04 open
 
 ## Goal and deliverable
 
 This specification defines the popup's approved basic features and workflow. Implementation proceeds through the ordered issue slices below; completed page shells do not imply that bookmark or Settings operations exist. Prioritize usable features over visual polish.
 
-[Storage and quick add](../storage-and-quick-add/spec.md) are complete. This video is complete following user review. Reuse its persisted video/bookmark model and shared operations; All videos, Settings, markers, and backup/restore remain unimplemented.
+[Storage and quick add](../storage-and-quick-add/spec.md) are complete. This video is complete following user review. Reuse its persisted video/bookmark model and shared operations; All videos is implemented and awaiting user verification. Settings, markers, and backup/restore remain unimplemented.
 
 ## Implementation and review slices
 

@@ -244,3 +244,66 @@ h1 {
 .destructive {
   color: var(--error);
 }
+
+.video-search {
+  display: grid;
+  gap: 4px;
+  margin: 16px 0;
+}
+
+.video-search-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.video-search-controls input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--dialog-background);
+}
+
+.video-search-controls button {
+  flex-shrink: 0;
+}
+
+.video-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.saved-video {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.saved-video-title {
+  font-weight: 650;
+}
+
+.saved-video .bookmark-toolbar {
+  margin-top: 8px;
+}
+
+.video-moments summary {
+  cursor: pointer;
+}
+
+.video-moments .bookmark-row:last-child {
+  border-bottom: 0;
+}
+
+.popup a {
+  color: var(--link);
+}
+
+.popup a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

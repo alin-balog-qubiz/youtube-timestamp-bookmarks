@@ -1,6 +1,6 @@
 # All videos: selector, title filter, and bulk deletion
 
-Status: open
+Status: implemented; awaiting user verification
 Blocked by: 01, 02
 
 ## Goal
@@ -32,3 +32,11 @@ Settings, fuzzy/typo-tolerant search, ID/name search, advanced sorting, Guide, W
 4. Cancel and confirm per-video deletion, including from a filtered result. Other videos remain unchanged; the deleted video stays absent after reopening. A failed deletion retains the row/data and reports failure.
 5. Edit or delete through This video and revisit All videos: counts, ordering, and expanded moments reflect the authoritative records. Confirm the only management control here is per-video bulk deletion.
 6. Record actual popup/tab smoke evidence and run existing source checks after implementation. Keep search-behavior regressions focused on consumer-visible matching and ordering.
+
+## Implementation and verification
+
+- Implemented the persisted library list, creation-date ordering, chronological expansion, title-only filter, new-tab title links, shared timestamp playback launcher, and confirmed per-video bulk deletion.
+- Reads and storage-change refreshes use the authoritative video records and marker preferences. Deletion uses the existing background-routed operation; failed reads/deletions report errors without discarding the previous library.
+- `npm run compile`, `npm run build`, and final `npm run lint` passed.
+- Isolated Edge extension smoke used real local storage: confirmed title/ID fallback, derived counts, ordering, zero-bookmark exclusion, mixed-case title fragments, ID/bookmark-name exclusion, chronological timestamps, inherited/custom colors, confirmation identity/count, cancellation, successful filtered deletion, other-video retention, and absence after popup reload. Captured the rendered 400 px popup.
+- Remaining acceptance testing belongs to the user, including active-player seeking, timestamp tab destinations, failure scenarios, and This video → All videos transitions. No permanent automated tests added.
