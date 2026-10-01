@@ -10,7 +10,7 @@ Single-context: read root `CONTEXT.md` and relevant ADRs in `docs/adr/` when pre
 
 ### Coding style
 
-For TypeScript data-operation names and message handlers, follow `docs/agents/coding-style.md`.
+For TypeScript and React coding conventions, follow `docs/agents/coding-style.md`.
 
 ## Product contract
 

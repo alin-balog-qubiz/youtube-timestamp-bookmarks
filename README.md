@@ -1,6 +1,6 @@
 # YouTube Timestamp Bookmarks
 
-A personal Chrome extension for saving and revisiting moments in YouTube videos. Built with WXT and React. Player quick add and the popup's navigation shell are implemented; bookmark browsing/editing and Settings operations are not implemented yet.
+A personal Chrome extension for saving and revisiting moments in YouTube videos. Built with WXT and React. Player quick add and This video bookmark management are implemented; the latter is awaiting user review and verification. All videos browsing and Settings operations are not implemented yet.
 
 The agreed product behavior and boundaries live in [the project scope](docs/scope.md).
 
@@ -12,7 +12,7 @@ On a standard YouTube watch page, click the **+** control in the player toolbar.
 
 Open the extension from the browser toolbar. A supported standard YouTube watch page opens **This video**, even without bookmarks; other pages open **All videos**. The persistent header keeps **All videos** and **Settings** reachable and offers **This video** only while the active player is supported. Outside YouTube, a notice leaves navigation available. Context-read failures show an error rather than a supported-video shortcut.
 
-This slice provides page headings and the active video's title, not bookmark lists or Settings controls. The compact popup follows the system light/dark theme. See [popup setup](.scratch/popup-ui/issues/01-popup-setup.md) for implementation and smoke evidence.
+This video lists saved moments chronologically. Click a timestamp to seek; use its Actions menu to edit, copy a timestamped link, or confirm deletion. The editor saves name, a native-picker color/default inheritance, and timestamp together; −5/−1/+1/+5-second buttons adjust a draft within the active player's duration. Use default removes a custom color override. Cancel discards the draft, and collisions or failed saves retain it. Delete all bookmarks confirms the video identity and count. All videos and Settings remain page shells. The compact popup follows the system light/dark theme. See [This video](.scratch/popup-ui/issues/02-this-video-page.md) for implementation and review status.
 
 ## Develop locally
 

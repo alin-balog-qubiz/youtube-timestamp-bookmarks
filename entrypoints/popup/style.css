@@ -13,6 +13,9 @@
   --selected: #e2e8f0;
   --focus: #2563eb;
   --error: #b91c1c;
+  --link: #1d4ed8;
+  --dialog-background: #ffffff;
+  --swatch-border: #52525b;
 }
 
 * {
@@ -24,13 +27,46 @@ body {
   margin: 0;
 }
 
-button {
+button,
+input {
   font: inherit;
   color: inherit;
   cursor: pointer;
 }
 
-button:focus-visible {
+button {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+input {
+  cursor: text;
+}
+
+input[type='color'] {
+  cursor: pointer;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
@@ -44,5 +80,8 @@ button:focus-visible {
     --selected: #3f3f46;
     --focus: #93c5fd;
     --error: #fca5a5;
+    --link: #93c5fd;
+    --dialog-background: #18181b;
+    --swatch-border: #d1d5db;
   }
 }

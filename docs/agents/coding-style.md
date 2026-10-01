@@ -1,5 +1,9 @@
 # Coding style
 
+This document owns project-specific coding preferences and conventions: module ownership, imports, names, contracts, component/file layout, and whitespace.
+
+General engineering guidance lives in the [coding-standards skill](../../.agents/skills/coding-standards/SKILL.md). Read both when implementing, reviewing, or refactoring code. Keep general correctness/design guidance in the skill and project preferences here.
+
 ## File ownership
 
 - Top-level `entrypoints/`: WXT registration, lifecycle wiring, and thin message dispatch. Keep player detection, feature UI behavior, and persistence operations in their owning modules.
@@ -9,6 +13,18 @@
 - `entrypoints/popup/`: React composition, pages, UI components, and popup-local navigation/context state.
 
 Separate responsibilities by ownership, not by creating a file for each function or a component for each CSS class. Keep one owner for shared live state; consumers use that owner's operations rather than initialize parallel copies.
+
+## Import ordering
+
+Group imports by ownership and responsibility, in this order, with one blank line between non-empty groups:
+
+1. Third-party and platform imports, including React, WXT, and Node modules.
+2. Project-owned services and utilities.
+3. Project-owned models and shared types, including popup-local types.
+4. Project-owned components and pages.
+5. Stylesheets.
+
+Classify an import by its owning module, including `import type`; a service-owned type stays in the services group. Preserve ordering within each group, especially side-effect imports.
 
 ## Operation names
 
@@ -21,7 +37,7 @@ Name data operations by their effect:
 
 Use domain nouns rather than storage shapes in the public name. Player bookmark positions are `timestamp`: a nonnegative, whole-second number, not a formatted clock string. Keep names aligned across the model, request, client, and storage operation.
 
-Keep framework entrypoints thin: register context-local message handlers through the shared registration module. Registration validates the envelope and registered type and owns synchronous/asynchronous response delivery. Each private handler validates its operation's payload and returns typed results, including operation failure responses. Validation errors should identify the invalid field. Extract helpers when they express a reusable rule or clarify a nontrivial operation, not merely to introduce a generic for one caller. Prefer clear names and structure over comments that narrate the next statement.
+Keep framework entrypoints thin: register context-local message handlers through the shared registration module. Registration validates the envelope and registered type and owns synchronous/asynchronous response delivery. Each private handler validates its operation's payload and returns typed results, including operation failure responses. Validation errors should identify the invalid field.
 
 ## Intent-based naming
 
@@ -44,7 +60,26 @@ Keep runtime request/response contracts in `models/messages.ts` and data/context
 
 Name navigation/context values by their data: `currentState`, `detectedContext`, `selectedPage`, and `destinationPage`. Name lifecycle flags by the event they track, such as `hasSelectedInitialPage`, rather than a generic `initialized`. Use explicit conditionals for state transitions with multiple rules.
 
-Keep subscriptions and state-dependent operations within the lifecycle that owns their live state. Extract a hook when it clarifies ownership, not merely to shorten a component. Name refresh IDs and timeout handles for their purpose; preserve stale-result rejection and cleanup when restructuring asynchronous work.
+Keep popup context subscriptions and state-dependent operations within their owning lifecycle. Extract a hook when it clarifies that ownership, not merely to shorten a component. Name refresh IDs and timeout handles for their purpose.
+
+### Component layout
+
+After unpacking props, order component bodies as follows:
+
+1. `useState` declarations: name the changing data or lifecycle condition explicitly. Distinguish draft values, persisted data, feedback, and operation errors.
+2. `useRef` declarations in a separate block: name the referenced purpose and use a `Ref` suffix. DOM refs identify their element; non-DOM refs identify the mutable lifecycle value or latest snapshot they retain.
+3. Derived values and synchronous setup required by effects.
+4. Separately spaced `useEffect` calls: mount-only `[]` effects first, followed by dependent effects. Keep real dependencies and cleanup intact; effect ordering is not a reason to remove dependencies.
+5. Event handlers and their private helper chains.
+6. Render-only derived values, then JSX.
+
+Use blank lines between these blocks and between distinct state groups.
+
+### Readability and guards
+
+Group statements by related data flow. Keep declarations adjacent to their immediate use or guard: reading `playerContext` and checking its status form one block; constructing a request, sending it, and checking the response form another. Separate unrelated setup, independent guards, later processing, and success/failure paths with blank lines rather than spacing every statement. Keep JSX sections distinct, and wrap long conditions and control attributes instead of compressing them onto one line.
+
+Both simple braceless early-return layouts are preferred: `if (condition) return value;`, or `if (condition)` followed by an indented `return value;` on the next line. Keep short guards inline or use the two-line form for clarity; keep braces for multi-statement branches and wherever omitting them would make control flow ambiguous.
 
 ## File ordering
 

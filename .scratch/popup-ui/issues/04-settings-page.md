@@ -11,7 +11,7 @@ Deliver functional preferences and backup/restore, following [Settings in the pa
 
 ### Player markers preferences
 
-- Show **Player markers** controls for marker visibility and global default marker color, using the shared accessible preset palette/default-color contract from [This video](02-this-video-page.md).
+- Show **Player markers** controls for marker visibility and global default marker color, using a labeled native color picker and the shared hex-color/default-color contract from [This video](02-this-video-page.md).
 - Load and persist real preferences immediately, without a page-wide Save button. Provide loading/failure feedback; do not present an unpersisted value as saved.
 - Visibility affects markers, not quick add or popup browsing. Default-color changes affect inheriting bookmarks only; explicit overrides survive, and Use default in the editor restores inheritance.
 
@@ -27,9 +27,9 @@ Deliver functional preferences and backup/restore, following [Settings in the pa
 
 ## Boundaries and ownership
 
-This slice owns the Settings page, persisted preferences, backup format/validation, effect preview, and real export/import operations. Reuse the shared palette and default-color behavior; route bookmark mutations through the existing background boundary and serialization so imports do not bypass the mutation contract.
+This slice owns the Settings page, persisted preferences, backup format/validation, effect preview, and real export/import operations. Reuse the shared color validation and default-color behavior; route bookmark mutations through the existing background boundary and serialization so imports do not bypass the mutation contract.
 
-Player-marker rendering remains a separate implementation concern, as stated in the parent workflow. Store real visibility preferences for that consumer, but do not claim this slice renders timeline markers or that nonexistent markers were visually toggled. Verify color inheritance through the completed bookmark pages; verify visibility consumption through markers when that feature exists. Welcome, Guide, free-form colors, manual theme selection, and visual polish remain deferred.
+Player-marker rendering remains a separate implementation concern, as stated in the parent workflow. Store real visibility preferences for that consumer, but do not claim this slice renders timeline markers or that nonexistent markers were visually toggled. Verify color inheritance through the completed bookmark pages; verify visibility consumption through markers when that feature exists. Welcome, Guide, manual theme selection, and visual polish remain deferred.
 
 ## Acceptance and smoke verification
 

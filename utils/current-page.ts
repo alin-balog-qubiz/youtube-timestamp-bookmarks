@@ -5,7 +5,7 @@ export function getCurrentPage(href: string): CurrentPage {
   if (
     !['https:', 'http:'].includes(url.protocol) ||
     !(url.hostname === 'youtube.com' || url.hostname.endsWith('.youtube.com'))
-  ) 
+  )
     return { isYoutube: false, videoId: null };
 
   const videoId = url.searchParams.get('v');

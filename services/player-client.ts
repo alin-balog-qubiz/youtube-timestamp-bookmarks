@@ -1,6 +1,8 @@
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
-import type { ActiveVideo } from '@/models/active-video';
+
 import { getCurrentPage } from '@/utils/current-page';
+
+import type { ActiveVideo } from '@/models/active-video';
 
 type YoutubePlayer = HTMLElement & {
   getVideoData?: () => { video_id?: string };
@@ -22,6 +24,8 @@ export type PlayerContext =
 export interface PlayerClient {
   getPlayerContext: () => PlayerContext;
   getActiveVideo: () => ActiveVideo | null;
+  getPlayerDuration: (videoId: string) => number | null;
+  seekBookmark: (videoId: string, timestamp: number) => void;
   onChange: (listener: () => void) => () => void;
 }
 
@@ -40,7 +44,7 @@ export function createPlayerClient(ctx: ContentScriptContext): PlayerClient {
   ctx.addEventListener(document, 'loadedmetadata', handleLoadedMetadata, true);
   ctx.onInvalidated(() => changeListeners.clear());
 
-  return { getPlayerContext, getActiveVideo, onChange };
+  return { getPlayerContext, getActiveVideo, getPlayerDuration, seekBookmark, onChange };
 
   function getPlayerContext(): PlayerContext {
     const videoId = getWatchVideoId();
@@ -66,11 +70,30 @@ export function createPlayerClient(ctx: ContentScriptContext): PlayerClient {
   function getActiveVideo(): ActiveVideo | null {
     const playerContext = getPlayerContext();
     if (playerContext.status !== 'supported') return null;
+
     return { videoId: playerContext.videoId, title: playerContext.title };
+  }
+
+  function getPlayerDuration(videoId: string): number | null {
+    const { video } = requireVideoContext(videoId);
+    return Number.isFinite(video.duration) && video.duration >= 0 ? video.duration : null;
+  }
+
+  function seekBookmark(videoId: string, timestamp: number): void {
+    const { video } = requireVideoContext(videoId);
+
+    if (!Number.isSafeInteger(timestamp) || timestamp < 0)
+      throw new Error('Timestamp must be a nonnegative whole second');
+
+    if (Number.isFinite(video.duration) && timestamp > Math.floor(video.duration))
+      throw new Error('Timestamp is outside the active player duration');
+
+    video.currentTime = timestamp;
   }
 
   function onChange(listener: () => void): () => void {
     changeListeners.add(listener);
+
     return () => changeListeners.delete(listener);
   }
 
@@ -102,6 +125,7 @@ export function createPlayerClient(ctx: ContentScriptContext): PlayerClient {
     if (event.target === departingVideo && departingVideoId !== getWatchVideoId()) {
       newMediaLoaded = true;
     }
+
     notifyChange();
   }
 
@@ -111,10 +135,12 @@ export function createPlayerClient(ctx: ContentScriptContext): PlayerClient {
 
   function rememberDepartingVideo() {
     if (!activeVideoId) return;
+
     const video = document.querySelector<HTMLVideoElement>(
       'ytd-watch-flexy #movie_player video.html5-main-video',
     );
     if (!video || (departingVideoId === activeVideoId && departingVideo === video)) return;
+
     departingVideo = video;
     departingSource = video.currentSrc || video.src;
     departingVideoId = activeVideoId;
@@ -126,6 +152,14 @@ export function createPlayerClient(ctx: ContentScriptContext): PlayerClient {
       video !== departingVideo ||
       (video.currentSrc || video.src) !== departingSource ||
       newMediaLoaded;
+  }
+
+  function requireVideoContext(videoId: string) {
+    const playerContext = getPlayerContext();
+    if (playerContext.status !== 'supported' || playerContext.videoId !== videoId)
+      throw new Error('The active video changed or is unavailable. Reopen This video for the correct video.');
+
+    return playerContext;
   }
 }
 
@@ -139,7 +173,6 @@ function getPlayerElements(videoId: string) {
   const controls = player?.querySelector<HTMLElement>('.ytp-right-controls');
   const video = player?.querySelector<HTMLVideoElement>('video.html5-main-video');
   const watchVideoId = watch?.getAttribute('video-id');
-
   if (
     !watch ||
     !player ||
@@ -149,6 +182,7 @@ function getPlayerElements(videoId: string) {
     watch.hasAttribute('is-live') ||
     watch.hasAttribute('is-live-now') ||
     player.classList.contains('ytp-live') ||
+    player.classList.contains('ad-showing') ||
     video.duration === Infinity ||
     video.readyState < HTMLMediaElement.HAVE_METADATA
   ) {

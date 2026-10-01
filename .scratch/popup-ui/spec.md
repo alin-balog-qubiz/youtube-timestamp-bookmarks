@@ -1,12 +1,12 @@
 # Popup UI workflow
 
-Status: in progress; 01 complete; 02–04 open
+Status: in progress; 01–02 complete; 03–04 open
 
 ## Goal and deliverable
 
 This specification defines the popup's approved basic features and workflow. Implementation proceeds through the ordered issue slices below; completed page shells do not imply that bookmark or Settings operations exist. Prioritize usable features over visual polish.
 
-[Storage and quick add](../storage-and-quick-add/spec.md) are complete. Reuse their persisted video/bookmark model; this specification does not claim that popup operations, settings, markers, or backup/restore already exist.
+[Storage and quick add](../storage-and-quick-add/spec.md) are complete. This video is complete following user review. Reuse its persisted video/bookmark model and shared operations; All videos, Settings, markers, and backup/restore remain unimplemented.
 
 ## Implementation and review slices
 
@@ -72,10 +72,10 @@ The popup has exactly three pages: **All videos**, **This video**, and **Setting
 
 ### Edit dialog
 
-- Use a small dialog with formatted timestamp, optional name, preset color choices, and explicit **Save / Cancel**.
+- Use a small dialog with formatted timestamp, optional name, a labeled native color picker, and explicit **Save / Cancel**.
 - Provide **−5s**, **−1s**, **+1s**, and **+5s** buttons beside the timestamp. No direct timestamp entry in this slice.
 - Buttons change the draft only. Save commits timestamp, name, and color together; Cancel leaves stored data unchanged.
-- A blank name means unnamed. **Use default** removes the bookmark's color override; otherwise select from the same accessible preset palette used in Settings.
+- A blank name means unnamed. The native color picker selects an opaque six-digit hex color (`#rrggbb`), not a preset-only value. A separate **Use default** control removes the bookmark's color override; show the current color value and whether it inherits the global default. Settings uses the same color contract.
 - Adjustment stays within whole seconds from `0` through `floor(active player duration)`, inclusive. Disable any adjustment button whose result would be outside that range; do not clamp an oversized step to a boundary.
 - If duration is unavailable or non-finite, disable timestamp adjustment with an explanation while permitting name/color edits. Recheck the active video and duration bounds when saving a timestamp change.
 - Bookmark identity remains `(video ID, whole second)`. Moving to another second changes that identity while preserving the creation date and retaining the name/color unless edited in the same draft.
@@ -88,7 +88,7 @@ The popup has exactly three pages: **All videos**, **This video**, and **Setting
 
 - Group marker visibility and global default marker color under **Player markers**.
 - Show/hide affects markers only; quick add and popup browsing remain available.
-- Use a small, accessible preset palette, not a free-form color picker. Marker preferences save immediately without a page-wide Save button; show failures rather than reporting unpersisted values as saved.
+- Use a labeled native color picker for the global default color, accepting the same `#rrggbb` values as bookmark overrides. Marker preferences save immediately without a page-wide Save button; show failures rather than reporting unpersisted values as saved.
 - The global default affects bookmarks with no explicit override. Existing overrides remain unchanged; choosing **Use default** in the bookmark editor restores inheritance.
 
 ### Backup and restore
@@ -106,7 +106,7 @@ The popup has exactly three pages: **All videos**, **This video**, and **Setting
 - Provide loading, empty, and failure states. Failed reads are errors, not empty data; failed writes do not produce success feedback.
 - Empty This video points to the player **+** button. An empty All videos view points to the player **+** on a watch page or offers a link to YouTube elsewhere.
 - Keep a compact, scrollable popup, roughly 380–420 px wide, with restrained layout and system light/dark theme. Use actual shadcn/ui components where helpful.
-- Preserve usable keyboard navigation, accessible control labels, and color names/selected-state indicators that do not rely on color alone. Functional clarity takes precedence over decoration.
+- Preserve usable keyboard navigation, accessible control labels, and color-value/default-state indicators that do not rely on color alone. Functional clarity takes precedence over decoration.
 - Welcome and the separate Guide page are deferred. Show useful inline instructions, but no Guide link until its destination exists. Guide remains a later product commitment.
 
 ## Implementation boundaries
@@ -117,7 +117,7 @@ Follow the shared YouTube player ownership in [product architecture](../../docs/
 
 The later implementation must deliver the real operations behind the described controls, not inert settings, placeholder import/export, or a second store. This document itself implements none of them. Player-marker rendering remains a separate implementation concern that must consume the agreed settings.
 
-Deferred: advanced sorting, typo-tolerant/fuzzy search, ID/bookmark-name search, direct timestamp entry, Welcome, Guide, and visual polish. Existing product exclusions such as popup quick add, undo, free-form colors, and unsupported playback integrations remain unchanged.
+Deferred: advanced sorting, typo-tolerant/fuzzy search, ID/bookmark-name search, direct timestamp entry, Welcome, Guide, and visual polish. Existing product exclusions such as popup quick add, undo, and unsupported playback integrations remain unchanged.
 
 ## Acceptance scenarios for later implementation
 

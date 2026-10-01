@@ -5,6 +5,13 @@ export interface Bookmark {
   color?: string;
 }
 
+/** Complete editable state; omitted name/color remove the stored name/override. */
+export interface BookmarkDraft {
+  timestamp: number;
+  name?: string;
+  color?: string;
+}
+
 export interface Video {
   id: string;
   title?: string;

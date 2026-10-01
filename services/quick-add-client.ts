@@ -1,4 +1,5 @@
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
+
 import { createBookmark } from '@/services/bookmark-client';
 import type { PlayerClient } from '@/services/player-client';
 
@@ -23,11 +24,14 @@ export function initializeQuickAdd(ctx: ContentScriptContext, playerClient: Play
 
   function reconcile() {
     stopRetry();
+
     const playerContext = playerClient.getPlayerContext();
     if (playerContext.status === 'unavailable') {
       unmount();
+
       return;
     }
+
     if (
       playerContext.status === 'loading' ||
       !Number.isFinite(playerContext.video.currentTime) ||
@@ -35,6 +39,7 @@ export function initializeQuickAdd(ctx: ContentScriptContext, playerClient: Play
     ) {
       unmount();
       retryTimeout = window.setTimeout(reconcile, 750);
+
       return;
     }
 
@@ -44,8 +49,10 @@ export function initializeQuickAdd(ctx: ContentScriptContext, playerClient: Play
     if (!parent) {
       unmount();
       retryTimeout = window.setTimeout(reconcile, 750);
+
       return;
     }
+
     if (
       host?.isConnected &&
       host.parentElement === playerContext.controls &&
@@ -54,6 +61,7 @@ export function initializeQuickAdd(ctx: ContentScriptContext, playerClient: Play
     ) {
       return;
     }
+
     unmount();
     mount(playerContext.videoId, playerContext.controls, parent);
   }
@@ -61,6 +69,7 @@ export function initializeQuickAdd(ctx: ContentScriptContext, playerClient: Play
   function mount(videoId: string, controls: HTMLElement, parent: Element) {
     const element = document.createElement('span');
     element.className = 'yt-bookmarks-quick-add';
+
     const shadow = element.attachShadow({ mode: 'open' });
     const style = document.createElement('style');
     style.textContent = `
@@ -72,11 +81,13 @@ export function initializeQuickAdd(ctx: ContentScriptContext, playerClient: Play
       .feedback { color: white; font: 500 12px Arial, sans-serif; white-space: nowrap; padding-right: 8px; text-shadow: 0 1px 2px black; }
       .feedback:empty { display: none; }
     `;
+
     const button = document.createElement('button');
     button.type = 'button';
     button.textContent = '+';
     button.setAttribute('aria-label', 'Save current moment');
     button.title = 'Save current moment';
+
     const status = document.createElement('span');
     status.className = 'feedback';
     status.setAttribute('role', 'status');
@@ -96,6 +107,7 @@ export function initializeQuickAdd(ctx: ContentScriptContext, playerClient: Play
 
     button.addEventListener('click', async (event) => {
       event.stopPropagation();
+
       if (button.disabled) return;
 
       const playerContext = playerClient.getPlayerContext();
@@ -112,15 +124,18 @@ export function initializeQuickAdd(ctx: ContentScriptContext, playerClient: Play
 
       const timestamp = Math.floor(playerContext.video.currentTime);
       const saveRevision = mountRevision;
+
       button.disabled = true;
+
       try {
         const result = await createBookmark(playerContext.videoId, timestamp, playerContext.title);
         if (saveRevision === mountRevision && !ctx.isInvalid) {
           showFeedback(status, result === 'saved' ? 'Saved' : 'Already saved');
         }
-      } catch {
+      } catch (error) {
         if (saveRevision === mountRevision && !ctx.isInvalid) {
-          showFeedback(status, 'Unable to save');
+          const detail = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+          showFeedback(status, detail.trim() ? detail : 'Unable to save');
         }
       } finally {
         button.disabled = false;
