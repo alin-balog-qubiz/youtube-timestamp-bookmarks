@@ -28,13 +28,15 @@ The user explicitly requires inspecting and reviewing changes before committing.
 | `services/bookmark-client.ts` | Host-page-facing adapter: sends `bookmarks:create`, unwraps response |
 | `entrypoints/background.ts` | Runtime listener, switch dispatch, private handler and Result-returning validation |
 | `services/bookmarks.ts` | Per-video write serialization, persistence, video listing |
-| `entrypoints/quick-add.content.ts` | Content-script entrypoint, player control, navigation/lifecycle management |
+| `entrypoints/youtube.content.ts` | Shared YouTube bootstrap and player-message dispatch |
+| `services/player-client.ts` | Supported player detection and shared navigation/media lifecycle |
+| `services/quick-add-client.ts` | Player control, capture, feedback, observer/timer cleanup |
 | `wxt.config.ts` | Extension identity and storage permission |
 | `eslint.config.ts` | TypeScript and React flat lint configuration |
 
 `utils/bookmarks.ts` was removed; there is no compatibility alias.
 
-## Verification evidence
+## Original storage-slice verification evidence
 
 Latest source checks passed: `npm run lint`, `npm run compile`, `npm run build`.
 
@@ -48,4 +50,4 @@ Earlier in the session, the user manually tested the control on live YouTube and
 
 - ESLint and `@eslint/js` are on matching 9.x versions because the current React plugin's peer range excludes ESLint 10. npm warns that ESLint 9 is unsupported; do not silently mix major versions or bypass peers with force flags.
 - npm incremental installation dropped optional native bindings from the lockfile. Their entries were repaired without changing existing locked package versions; an approved `npm ci --include=optional` then succeeded, followed by lint, compile, and build. The repaired `package-lock.json` belongs with dependency-manifest changes.
-- Popup browsing/editing, timeline markers, settings, import/export, Guide, and replacement branding remain outside this completed slice. The popup and icon are still starter assets; only unused popup code, link safety, and export ordering were cleaned up.
+- Popup navigation shells are now implemented; browsing/editing, timeline markers, Settings operations, import/export, Guide, and replacement branding remain outside the completed storage slice. See [popup setup](../popup-ui/issues/01-popup-setup.md) for the current shared-player ownership cutover and its verification. The extension icon remains a starter asset.

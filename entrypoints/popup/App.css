@@ -1,42 +1,67 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+.popup {
+  display: flex;
+  flex-direction: column;
+  min-height: 240px;
+  max-height: 560px;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #54bc4ae0);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.popup-header {
+  flex-shrink: 0;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.product-name {
+  margin: 0 0 12px;
+  font-weight: 650;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+nav {
+  display: flex;
+  gap: 8px;
 }
 
-.card {
-  padding: 2em;
+nav button {
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
 }
 
-.read-the-docs {
-  color: #888;
+nav button:hover {
+  background: var(--surface);
+}
+
+nav button[aria-current='page'] {
+  border-color: var(--border);
+  background: var(--selected);
+  font-weight: 650;
+}
+
+main {
+  overflow-y: auto;
+  padding: 16px;
+  overflow-wrap: anywhere;
+}
+
+h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.notice {
+  margin: 0 0 16px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.error {
+  color: var(--error);
+}
+
+.video-title {
+  margin: 8px 0 0;
 }

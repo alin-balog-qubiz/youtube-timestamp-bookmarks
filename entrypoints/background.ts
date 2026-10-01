@@ -1,19 +1,11 @@
-import { browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
 import { createBookmark } from '@/services/bookmarks';
+import { registerMessageHandlers } from '@/services/messages';
 import type { CreateBookmarkRequest, CreateBookmarkResponse, Result } from '@/models/messages';
 
 export default defineBackground(() => {
-  browser.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
-    if (typeof message !== 'object' || message === null || !('type' in message)) return;
-
-    switch (message.type) {
-      case 'bookmarks:create':
-        void handleCreateBookmark(message).then(sendResponse);
-        return true;
-      default:
-        return;
-    }
+  registerMessageHandlers({
+    'bookmarks:create': handleCreateBookmark,
   });
 });
 

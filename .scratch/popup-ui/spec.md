@@ -1,10 +1,10 @@
 # Popup UI workflow
 
-Status: approved; implementation not started
+Status: in progress; 01 complete; 02–04 open
 
 ## Goal and deliverable
 
-Define the popup's basic features and workflow before building the UI. This task delivers this specification and synchronized [product scope](../../docs/scope.md), not a prototype or implementation. Prioritize usable features over visual polish.
+This specification defines the popup's approved basic features and workflow. Implementation proceeds through the ordered issue slices below; completed page shells do not imply that bookmark or Settings operations exist. Prioritize usable features over visual polish.
 
 [Storage and quick add](../storage-and-quick-add/spec.md) are complete. Reuse their persisted video/bookmark model; this specification does not claim that popup operations, settings, markers, or backup/restore already exist.
 
@@ -112,6 +112,8 @@ The popup has exactly three pages: **All videos**, **This video**, and **Setting
 ## Implementation boundaries
 
 Follow the product's existing architecture: one authoritative record per video, derived lists/counts, background-routed mutations, per-video serialization, and typed success/failure results. Moving a timestamp must be one persisted record update, not independent delete/create writes that can lose a bookmark or partially apply the edit.
+
+Follow the shared YouTube player ownership in [product architecture](../../docs/scope.md#project-architecture): the popup detects active-tab context, while content-side player messages and quick add consume one player lifecycle. Keep player navigation/media identity checks in that shared owner so popup operations and quick add cannot disagree about stale playback.
 
 The later implementation must deliver the real operations behind the described controls, not inert settings, placeholder import/export, or a second store. This document itself implements none of them. Player-marker rendering remains a separate implementation concern that must consume the agreed settings.
 
