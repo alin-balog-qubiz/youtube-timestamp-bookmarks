@@ -4,6 +4,10 @@ A personal Chrome extension for saving and revisiting moments in YouTube videos.
 
 The agreed product behavior and boundaries live in [the project scope](docs/scope.md).
 
+## Approved design-system plan
+
+The [YouTube Bookmarks design-system scratch](.scratch/design-system/spec.md) defines the approved replacement UI; implementation has not started. It contains [issue 1: create components and a development inspection page](.scratch/design-system/issues/01-create-components.md) and [issue 2: adopt them throughout the popup and remove the temporary link](.scratch/design-system/issues/02-use-components-in-app.md), plus an [archived interactive reference](.scratch/design-system/reference/index.html). The usage below describes the currently implemented POC, not the planned cutover. Quick add remains unchanged.
+
 ## Save a moment
 
 On a standard YouTube watch page, click the **+** control in the player toolbar. The current whole-second position is saved locally without interrupting playback. **Saved** confirms a new bookmark; **Already saved** means that video's second was previously saved. Bookmarks remain in extension storage after reload. Timeline markers are not available yet.
