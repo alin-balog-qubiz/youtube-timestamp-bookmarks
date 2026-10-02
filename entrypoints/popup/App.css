@@ -307,3 +307,120 @@ h1 {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
+
+.settings-page section {
+  margin-top: 20px;
+}
+
+.settings-page h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.settings-page h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.settings-page p {
+  margin: 8px 0;
+}
+
+.settings-fields {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settings-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.settings-checkbox input {
+  flex-shrink: 0;
+  margin: 4px 0 0;
+  cursor: pointer;
+}
+
+.settings-color {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-color input {
+  width: 48px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--dialog-background);
+}
+
+.settings-page input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.settings-import {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.settings-file {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-file input {
+  width: 100%;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.settings-import-modes {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 12px 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.settings-page .settings-preview {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.settings-changes {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  font-size: 12px;
+}
+
+.settings-changes dt {
+  font-weight: 650;
+}
+
+.settings-changes dd {
+  margin: 0;
+}

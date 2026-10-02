@@ -4,9 +4,10 @@ import { formatTimestamp } from '@/utils/bookmark-time';
 
 import type { BookmarkDraft, CreateBookmarkResult, Video } from '@/models/bookmark';
 
-const videoPrefix = 'videos:v1:';
+export const videoStoragePrefix = 'videos:v1:';
 
 const writeQueueTailByVideo = new Map<string, Promise<void>>();
+let libraryQueueTail = Promise.resolve();
 
 /** Background-only: duplicate saves retain bookmark metadata but may refresh the video title. */
 export function createBookmark(
@@ -110,21 +111,33 @@ export function deleteVideoBookmarks(videoId: string): Promise<void> {
   return serializeVideoMutation(videoId, () => storage.removeItem(getVideoStorageKey(videoId)));
 }
 
+/**
+ * Background-only: wait for existing video writes and earlier library operations.
+ * Video writes queued afterward wait for this barrier; operations must not nest it.
+ */
+export function serializeLibraryMutation<T>(operation: () => Promise<T>): Promise<T> {
+  const previousWrites = [libraryQueueTail, ...writeQueueTailByVideo.values()];
+  const mutation = Promise.all(previousWrites).then(operation);
+  libraryQueueTail = mutation.then(() => undefined, () => undefined);
+
+  return mutation;
+}
+
 export async function listVideos(): Promise<Video[]> {
   const items = await storage.snapshot('local');
   return Object.entries(items)
-    .filter(([key]) => key.startsWith(videoPrefix))
+    .filter(([key, value]) => key.startsWith(videoStoragePrefix) && value !== null)
     .map(([, value]) => value as Video)
     .filter((video) => Object.keys(video.bookmarks).length > 0);
 }
 
-function getVideoStorageKey(videoId: string) {
-  return `local:${videoPrefix}${encodeURIComponent(videoId)}` as const;
+export function getVideoStorageKey(videoId: string) {
+  return `local:${videoStoragePrefix}${encodeURIComponent(videoId)}` as const;
 }
 
 function serializeVideoMutation<T>(videoId: string, operation: () => Promise<T>): Promise<T> {
-  const previousWrite = writeQueueTailByVideo.get(videoId);
-  const mutation = previousWrite ? previousWrite.then(operation) : operation();
+  const previousWrite = writeQueueTailByVideo.get(videoId) ?? Promise.resolve();
+  const mutation = Promise.all([libraryQueueTail, previousWrite]).then(operation);
   const queueTail = mutation.then(() => undefined, () => undefined);
   writeQueueTailByVideo.set(videoId, queueTail);
   void queueTail.then(() => {
