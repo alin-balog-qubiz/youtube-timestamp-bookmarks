@@ -1,0 +1,7 @@
+.development-components-link {
+  display: inline-block;
+  margin-top: 12px;
+  color: inherit;
+  font-size: 12px;
+  text-underline-offset: 3px;
+}

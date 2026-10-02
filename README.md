@@ -4,9 +4,11 @@ A personal Chrome extension for saving and revisiting moments in YouTube videos.
 
 The agreed product behavior and boundaries live in [the project scope](docs/scope.md).
 
-## Approved design-system plan
+## Design-system components
 
-The [YouTube Bookmarks design-system scratch](.scratch/design-system/spec.md) defines the approved replacement UI; implementation has not started. It contains [issue 1: create components and a development inspection page](.scratch/design-system/issues/01-create-components.md) and [issue 2: adopt them throughout the popup and remove the temporary link](.scratch/design-system/issues/02-use-components-in-app.md), plus an [archived interactive reference](.scratch/design-system/reference/index.html). The usage below describes the currently implemented POC, not the planned cutover. Quick add remains unchanged.
+The [YouTube Bookmarks design system](.scratch/design-system/spec.md) has shared native React TSX components and an interactive development gallery, implemented in [issue 1](.scratch/design-system/issues/01-create-components.md). Each component lives in its own `ui/components/*.tsx` file; CSS lives in `ui/styles/` (including `foundations.css`), and supporting TypeScript lives in `ui/utils/`. Public exports stay in `ui/index.ts`; consumers import from `@/ui` and render inside `ThemeProvider`. Internal UI files use direct relative imports rather than their own barrel. Components receive state/callbacks and do not access extension services. [Issue 2](.scratch/design-system/issues/02-use-components-in-app.md) still owns popup adoption, persistence, and removal of the temporary gallery link. The usage below describes the existing POC. Quick add remains unchanged.
+
+Shared icons use the official [Tabler React library](https://docs.tabler.io/icons/libraries/react), outline variants only, through `ui/components/Icon.tsx`. Icons supplement action labels; compact video-group counts retain full accessible text.
 
 ## Save a moment
 
@@ -39,8 +41,16 @@ npm run dev
 
 For a production build, run `npm run compile` and `npm run build`. In Chrome, open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `.output/chrome-mv3/`. The development build lives in `.output/chrome-mv3-dev/`; reload the extension when needed.
 
+### Inspect components
+
+With `npm run dev` running and `.output/chrome-mv3-dev/` loaded, open the popup and click the temporary **Components** link. It opens the separate extension-owned gallery tab, not a fourth popup page. Its direct URL is `chrome-extension://<development-extension-id>/components.html`; obtain the ID from `chrome://extensions`. This URL remains usable after issue 2 removes the link.
+
+The gallery offers System/Light/Dark, Reset examples, constrained height, long text, many rows, and named interactive examples. Fixtures in `development/components/` never read or write production data. Sample Save, delete, and import operate on local state; backup/copy/navigation examples label their fixture feedback instead of affecting external data. `ColorPicker` uses the native browser color input; automated input-event smoke does not prove the OS picker dialog.
+
+`wxt.config.ts` removes the components entrypoint before production imports/building. The popup link and its lazy-loaded local CSS are guarded by `import.meta.env.DEV`. `npm run build` and `npm run zip` exclude the gallery, fixtures, link, and link stylesheet. Light/dark screenshots and interaction evidence are linked in issue 1. A 560 × up-to-700 px preview is not evidence of a native browser popup's maximum height.
+
 After content-script changes, reload the extension and refresh open YouTube tabs so they use the latest injected code. This also applies when a content entrypoint is renamed.
 
-Run `npm test` for backup validation, persistence, precedence, and concurrency regressions; run `npm run lint` to check source code. The ESLint configuration excludes generated WXT/build output and local agent/scratch directories. ESLint and `@eslint/js` stay on matching 9.x versions for compatibility with the React lint plugin; `jiti` loads the TypeScript config and regression service modules.
+Run `npm run compile` and `npm run lint` for source checks; `npm run zip` builds and packages the production extension. No test command is currently configured. ESLint excludes generated WXT/build output and local agent/scratch directories. ESLint and `@eslint/js` stay on matching 9.x versions for compatibility with the React lint plugin; `jiti` loads the TypeScript configuration.
 
 This is a pre-release learning project. The current extension icon is still a WXT starter asset; the popup starter UI has been replaced. See [initialization](.scratch/initialize/spec.md) for setup decisions and [the icon task](.scratch/initialize/issues/01-replace-starter-icon.md) for remaining branding work. Installed third-party agent skills under `.agents/` are local-only; `skills-lock.json` records their sources.

@@ -1,6 +1,6 @@
 # YouTube Bookmarks design system
 
-Status: approved; implementation not started
+Status: components and development gallery implemented; production adoption pending
 Approved: 2026-10-02
 
 ## Deliverable and authority
@@ -24,9 +24,13 @@ Replace the popup POC with the supplied design system through exactly two issues
 
 ## Scope and ownership
 
-Implement all components in the inventory, including the app-specific compositions. Use actual shadcn/ui components where helpful for interactive primitives; restyle them to this reference rather than shipping their default visual theme. Native color selection remains an `input[type=color]`.
+Implement all components in the inventory, including the app-specific compositions, as native React TSX components without Radix UI. Each component has its own file; a shared barrel index exports the inventory. Native color selection remains an `input[type=color]`. Match the quieter reference: text-only branding, restrained functional icons, no obligatory decorative icons beside settings rows.
 
-Presentational components accept data, state, and callbacks. They do not discover browser tabs, query extension storage, or send background messages. Page/controller owners retain those responsibilities. Extract reusable ownership boundaries, not one component per CSS class. Reuse one production theme owner and one color-resolution rule.
+Use the official `@tabler/icons-react` library, outline variants only, through the shared `Icon` component. Keep action labels beside icons: pencil/copy/trash in bookmark menus, external-link/trash for video actions, download/upload for backup buttons, and sun/moon/desktop for theme choices. Video-group counts show a bookmark icon and number, preserving the full saved-bookmark count for assistive technology; the video-summary badge keeps its bookmark-count text alongside the icon.
+
+The shared `ui/` module exposes its public interface through `ui/index.ts`. TSX files live in `ui/components/`, CSS in `ui/styles/` (`foundations.css`, `compositions.css`, `overlays.css`), and supporting TypeScript in `ui/utils/`. Consumers import from `@/ui`; implementation files import their dependencies directly, not through the barrel.
+
+Presentational components accept data, state, and callbacks. They do not discover browser tabs, query extension storage, or send background messages. Page/controller owners retain those responsibilities. Reuse one production theme owner and one color-resolution rule.
 
 Excluded: changes to the YouTube quick-add control or its feedback; timeline-marker implementation; Welcome/Guide; new search/sort features; undo; shortcuts; direct timestamp entry. Existing player-message operations remain available to popup consumers. Semantic color metadata is in scope, but does not imply implementing its future progress-bar consumer.
 
@@ -41,7 +45,8 @@ Every white palette token becomes `#F5F5F5`, including dark foreground and text 
 | Background / flat surface | `#F5F5F5` | `#111111` |
 | Secondary surface / navigation well | `#f7f8fa` | `#111111` |
 | Foreground | `#111111` | `#F5F5F5` |
-| Muted foreground / Gray preset | `#6b7280` | `#d9dee7` |
+| Muted foreground | `#626977` (contrast correction) | `#d9dee7` |
+| Gray preset | `#6b7280` | `#d9dee7` |
 | Border | `#d9dee7` | `#6b7280` |
 | Accent / Accent preset | `#c83f4f` | `#ff7a86` |
 | Accent contrast | `#F5F5F5` | `#111111` |
@@ -52,6 +57,8 @@ Every white palette token becomes `#F5F5F5`, including dark foreground and text 
 Derive dark edge from 22% foreground into background, dark depth from 52% border into background, and dark shadow from 78% background into transparent, matching the reference. Use semantic CSS variables so dialogs, menus, native inputs, and gallery previews resolve the same theme. Accent is not an alias for danger. Selection, errors, and destructive actions also use labels/shape/icons, not color alone.
 
 Check normal text at 4.5:1, large text at 3:1, and essential control/focus boundaries at 3:1 against adjacent surfaces. Decorative separators may retain the low-contrast reference border; essential outlines may need a stronger semantic token. A documented contrast correction takes precedence over literal pixel matching.
+
+Implemented contrast corrections: essential control borders (including selected tabs) use `#6b7280` in Light and `#8d949f` in Dark; Light focus uses `#a42d3b`. Light muted text uses `#626977`, while canonical Gray remains `#6b7280`. Decorative border/elevation tokens retain the reference values. Measured ratios are recorded in [issue 1](issues/01-create-components.md#implementation-and-verification--2026-10-02).
 
 ### Typography
 
@@ -75,7 +82,7 @@ No bundled fonts or network font requests. Installed fallback availability may c
 - Spacing foundation: 4 / 8 / 12 / 16 / 24 / 32 px; retain reference-specific 10–18 px paddings where matching the component requires them.
 - Radii: controls 8–9 px; cards/navigation 12 px; dialogs 16 px; showcase popup shell 20 px; pills fully rounded. The standalone shell's rounding does not require blank margins in the actual browser popup.
 - Standard raised depth: 3 px; small/button depth: 2 px; large depth: 5 px. Navigation wells use inset depth. Passive bookmark lists/notices stay flat. Raised dark surfaces retain depth and an inset edge rather than becoming flat.
-- Cards: video summary, video group, and setting groups raised. Tabs: recessed rail and raised active item. Theme choices: flat selected foreground/background inversion. Dialogs/menus: elevated overlays with reference-like soft shadows.
+- Cards: video summary, video group, and setting groups raised. Tabs: recessed rail and raised active item. Theme choices: flat selected foreground/background inversion. Dialogs retain a crisp 5 px depth and inset edge without blurred outer shadows or glow. Action menus retain crisp standard depth and an inset edge without blurred outer shadows or glow.
 - Inputs about 38 px high; tab targets at least 40 px; icon-button visual box about 36 px; setting rows at least 58 px. Preserve compact pointer targets while maintaining keyboard access and adequate spacing.
 - Standard transition 180 ms. Pressed buttons move 1 px and reduce elevation; dialog secondary controls use restrained recessed hover. Reduced-motion disables animated transitions/transforms.
 - Stroke icons follow the reference: 24-unit view box, rounded joins/caps, approximately 1.8 stroke; 18 px default and 15–16 px small. Decorative icons are hidden from accessibility APIs; icon-only actions have labels.
@@ -86,7 +93,7 @@ Target **560 px width and up to 700 px height**. Bound the surface to the actual
 
 ## Component inventory and contracts
 
-The names below describe responsibilities; combine related small components in one owning module where appropriate. Every row must be exercised in the gallery.
+The names below describe responsibilities. Each component has its own TSX file and a named barrel export. Every row must be exercised in the gallery.
 
 | Component | Required variants/state and responsibility |
 | --- | --- |
@@ -95,7 +102,7 @@ The names below describe responsibilities; combine related small components in o
 | Button | Accent, neutral raised, destructive, quiet/text; optional leading icon; normal/hover/pressed/focus/disabled/pending; pending blocks duplicate activation without losing the accessible name |
 | IconButton | Quiet icon action, accessible label, Tooltip; normal/hover/pressed/focus/disabled |
 | TextInput / SearchInput | Associated label, placeholder, value/change, disabled, invalid and linked help/error; SearchInput adds decorative search icon and clear action |
-| Switch | Controlled checked state, associated label, disabled/pending; native/shadcn keyboard semantics |
+| Switch | Controlled checked state, associated label, disabled/pending; native keyboard semantics |
 | SegmentedChoice | Controlled single selection; Light/Dark/System specialization; labeled group, keyboard selection, visible selected and focused states |
 | RadioChoice | Merge / Replace all cards; mutually exclusive selection, labeled group, focus and disabled states |
 | ColorPicker | Accent/Gray/Ink swatches and Custom native picker; selected/focus/disabled states, named choices and fixed hex display; optional Use default plus inherited/default indicator in editor |
@@ -170,4 +177,14 @@ Issue 1 is complete only when all inventory rows and applicable states render an
 
 Issue 2 is complete only when all real popup workflows use the components, themes survive reopening and follow OS changes correctly, legacy/current backup round trips preserve data, and the temporary link is removed. Capture actual extension-popup evidence, including available browser sizing: CSS preview dimensions alone do not prove a 700 px native popup. Record any browser-imposed height cap and verify scrolling under it.
 
-Run existing source checks once after implementation, inspect production artifacts, and record exact exercised scenarios in each issue. Keep permanent regressions for uncertain consumer-visible boundaries (migration, versioned validation, precedence, collisions), not component wiring/source text. This scratch is a plan: it does not claim any components or migration have been implemented.
+Run existing source checks after implementation, inspect production artifacts, and record exact exercised scenarios in each issue. Keep permanent regressions for uncertain consumer-visible boundaries (migration, versioned validation, precedence, collisions), not component wiring/source text. Issue 1 implements the components and isolated gallery; issue 2 still owns production migration and persistence.
+
+### Implementation additions — 2026-10-02
+
+User replaced the earlier shadcn/ui recommendation: no Radix UI; native React TSX components in separate files with barrel exports. Use the supplied quieter light/dark bookmark-list reference, not the icon-heavy settings example. Retain functional menu/clear/close/chevron icons and accessible feedback; avoid redundant decoration.
+
+### Visual refinement — 2026-10-02
+
+Dialogs initially focus the title, not the tooltip-bearing Close button. Timestamp editing uses a recessed panel, prominent zero-padded display, and boxed adjustment buttons. Marker selection uses compact accessible preset swatches and a distinct Custom control; switching presets retains the last custom picker value without changing the canonical persisted choice contract. Use default remains explicit.
+
+Settings uses a distinct full-width Appearance/theme group, Playback containing marker visibility and default marker color, then Backup/import/export. Avoid redundant setting subtitles and repeated visible labels; keep required failure/unavailable-duration explanations. User owns final visual verification.

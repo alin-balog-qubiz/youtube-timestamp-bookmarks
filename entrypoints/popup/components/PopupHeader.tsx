@@ -1,5 +1,7 @@
 import type { PopupPage } from '../types';
 
+if (import.meta.env.DEV) void import('./development.css');
+
 interface PopupHeaderProps {
   readonly selectedPage: PopupPage;
   readonly hasActiveVideo: boolean;
@@ -23,6 +25,11 @@ export default function PopupHeader({ selectedPage, hasActiveVideo, onNavigate }
           Settings
         </button>
       </nav>
+      {import.meta.env.DEV && (
+        <a className="development-components-link" href="/components.html" target="_blank" rel="noreferrer">
+          Components
+        </a>
+      )}
     </header>
   );
 }
