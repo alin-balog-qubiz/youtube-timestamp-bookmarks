@@ -1,6 +1,6 @@
 # Settings: preferences and JSON backup/restore
 
-Status: open
+Status: complete
 Blocked by: 01, 02, 03
 
 ## Goal
@@ -40,3 +40,22 @@ Player-marker rendering remains a separate implementation concern, as stated in 
 5. Replace with a different library and settings, including a valid empty library. Preview identifies replaced/incoming data; confirmed completion is visible in both pages and persists after reopening.
 6. Cancel each import mode and try malformed/invalid files: bookmarks and settings remain unchanged. Exercise an import persistence failure: no success feedback is shown.
 7. Record actual popup/download/import smoke evidence and run existing source checks after implementation. Keep regression coverage focused on validation, duplicate precedence, cancellation, and persisted results. Do not claim marker-rendering verification before its separate implementation exists.
+
+## Implementation and verification
+
+- Implemented immediate background-routed preferences, read/write failure feedback, and native color input using the shared hex/inheritance contract. Settings, This video, and All videos read the same authoritative records.
+- Implemented strict version-1 backup validation, Merge/Replace effect previews, destructive Replace acknowledgement, cancellation, and real readable JSON downloads. The [parent spec](../spec.md#backup-format-and-persistence) records the format and persistence contract.
+- Imports and settings writes share a library barrier with per-video mutation queues. Replace uses one storage batch; confirmation rejects a stale preview instead of overwriting an unseen concurrent change.
+- `npm test` passed all 8 regressions: persisted round trips, duplicate/title/settings precedence, abandoned previews, empty replacement, validation rejection, failure recovery, stale confirmation, and mutation ordering. `npm run compile`, `npm run lint`, and `npm run build` passed.
+- Built-extension Edge smoke exercised persisted visibility and default-color changes across popup reload; injected background read/write failures showed errors, retained saved values, and recovered through Retry. Both bookmark pages showed updated inherited colors and unchanged overrides. Use default was saved through the editor, reopened, and followed a subsequent default-color change.
+- Downloaded `youtube-timestamp-bookmarks-2026-10-01T14-57-50-820Z.json` through the real downloads API. Inspected its readable contents: 2 videos, 3 bookmarks, second zero, names, creation dates, an override, and both preferences. Replaced the library with empty data, imported that actual downloaded file, and checked the complete persisted round trip after reopening.
+- Merge smoke previewed and persisted 2 additions / 1 skipped duplicate, preserving the existing duplicate's metadata and current settings. Replace smoke previewed 6 current bookmarks in 3 videos → 3 incoming bookmarks in 2 videos, with settings changes. Different and empty replacements appeared in both bookmark pages; persisted data survived reopening.
+- Cancelled both modes; malformed and unsupported-version files changed nothing. A concurrent bookmark invalidated confirmation. Injected import and export failures showed explicit errors and no success feedback; failed import retained all records/settings.
+- On an actual supported YouTube player, quick add remained enabled with `showMarkers: false` and saved second 30 with **Saved** feedback. Captured the rendered 400 px Settings surface and destructive restore preview. Removed temporary fixtures and restored the isolated smoke library from the downloaded backup.
+- Verification limit: color selections were driven through native input events, not the operating-system picker dialog. Timeline markers do not exist yet; no marker-rendering or visual visibility-toggle verification is claimed.
+
+## Comments
+
+### Completion — 2026-10-01
+
+- Marked complete at the user's request following review.

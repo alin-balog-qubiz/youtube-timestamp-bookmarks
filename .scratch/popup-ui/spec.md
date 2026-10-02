@@ -1,12 +1,12 @@
 # Popup UI workflow
 
-Status: in progress; 01–02 complete; 03 implemented awaiting user verification; 04 open
+Status: in progress; 01–02 and 04 complete; 03 implemented awaiting user verification
 
 ## Goal and deliverable
 
 This specification defines the popup's approved basic features and workflow. Implementation proceeds through the ordered issue slices below; completed page shells do not imply that bookmark or Settings operations exist. Prioritize usable features over visual polish.
 
-[Storage and quick add](../storage-and-quick-add/spec.md) are complete. This video is complete following user review. Reuse its persisted video/bookmark model and shared operations; All videos is implemented and awaiting user verification. Settings, markers, and backup/restore remain unimplemented.
+[Storage and quick add](../storage-and-quick-add/spec.md) are complete. This video and Settings, including JSON backup/restore, are complete following user review. All videos is implemented and awaiting user verification. They share the persisted video/bookmark model and operations. Player-marker rendering remains unimplemented.
 
 ## Implementation and review slices
 
@@ -101,6 +101,16 @@ The popup has exactly three pages: **All videos**, **This video**, and **Setting
 - Validate the file before applying it. Invalid files show an error and change nothing. Canceling the preview also changes nothing.
 - Present operation success only after persistence succeeds. Import failures must not be presented as successful imports.
 
+### Backup format and persistence
+
+- Version 1 exports `{ "format": "youtube-timestamp-bookmarks", "version": 1, "videos": [...], "settings": {...} }`. `videos` contains the shared video records: nonblank `id`, optional text `title`, and a `bookmarks` object keyed by canonical whole-second strings such as `"0"`.
+- Each bookmark contains a matching nonnegative safe-integer `timestamp`, valid ISO `createdAt` with a time zone, optional text `name`, and optional six-digit hex `color`. Omitted color means inheritance. `settings` contains boolean `showMarkers` and six-digit hex `defaultColor`. Export preserves metadata; an empty `videos` array is valid.
+- Validation rejects unsupported format/version, unknown fields, duplicate video IDs, invalid dates/colors/settings, and timestamp keys that are noncanonical or disagree with their bookmark. Both file selection and the background boundary validate incoming data.
+- Merge retains existing video titles as well as duplicate bookmark metadata/settings; incoming titles are used for new videos. Preview video totals count videos with bookmarks, matching All videos.
+- Background imports, preference writes, and consistent backup snapshots share a library-wide barrier with existing per-video mutations. Confirmation rechecks the current snapshot; concurrent changes require a new preview before importing.
+- Replace commits records and settings in one local storage batch. Removed records become null tombstones, treated as absent by the shared readers, avoiding separate deletes that could partially apply a failed replacement.
+- Export uses the browser downloads API with the `downloads` permission and reports completion or interruption before releasing its Blob URL.
+
 ## Shared states and presentation
 
 - Provide loading, empty, and failure states. Failed reads are errors, not empty data; failed writes do not produce success feedback.
@@ -115,7 +125,7 @@ Follow the product's existing architecture: one authoritative record per video, 
 
 Follow the shared YouTube player ownership in [product architecture](../../docs/scope.md#project-architecture): the popup detects active-tab context, while content-side player messages and quick add consume one player lifecycle. Keep player navigation/media identity checks in that shared owner so popup operations and quick add cannot disagree about stale playback.
 
-The later implementation must deliver the real operations behind the described controls, not inert settings, placeholder import/export, or a second store. This document itself implements none of them. Player-marker rendering remains a separate implementation concern that must consume the agreed settings.
+The implemented popup pages use real background/storage operations rather than an independent UI store. Player-marker rendering remains a separate implementation concern that must consume the persisted visibility and default-color preferences.
 
 Deferred: advanced sorting, typo-tolerant/fuzzy search, ID/bookmark-name search, direct timestamp entry, Welcome, Guide, and visual polish. Existing product exclusions such as popup quick add, undo, and unsupported playback integrations remain unchanged.
 
