@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 
 import { getActiveTabContext } from '@/services/active-tab';
+import { getSettings } from '@/services/settings-client';
 
 import type { ActiveTabContext } from '@/models/active-tab';
-import type { PopupPage } from './types';
+import type { MarkerPreferences } from '@/models/marker-preferences';
+import type { PopupPage } from '@/ui';
 
-import PopupHeader from './components/PopupHeader';
-import ContextNotice from './components/ContextNotice';
+import { Button, Link, Notice, PopupHeader, Skeleton, ThemeProvider } from '@/ui';
 import AllVideosPage from './pages/AllVideosPage';
 import ThisVideoPage from './pages/ThisVideoPage';
 import SettingsPage from './pages/SettingsPage';
@@ -28,8 +29,47 @@ export default function App() {
     selectedPage: 'all-videos',
     hasSelectedInitialPage: false,
   });
+  const [preferences, setPreferences] = useState<MarkerPreferences | null>(null);
+  const [isReadingSettings, setIsReadingSettings] = useState(true);
+  const [settingsReadError, setSettingsReadError] = useState<string | null>(null);
+  const [settingsRetryId, setSettingsRetryId] = useState(0);
 
   const { activeTabContext, selectedPage } = popupState;
+
+  useEffect(() => {
+    let isDisposed = false;
+    let latestReadId = 0;
+    browser.storage.onChanged.addListener(handleSettingsChanged);
+    void readSettings();
+
+    return () => {
+      isDisposed = true;
+      latestReadId++;
+      browser.storage.onChanged.removeListener(handleSettingsChanged);
+    };
+
+    function handleSettingsChanged(changes: Record<string, unknown>, areaName: string) {
+      if (areaName === 'local' && 'marker-preferences:v1' in changes) void readSettings();
+    }
+
+    async function readSettings() {
+      const readId = ++latestReadId;
+      setIsReadingSettings(true);
+      try {
+        const savedPreferences = await getSettings();
+        if (isDisposed || readId !== latestReadId) return;
+
+        setPreferences(savedPreferences);
+        setSettingsReadError(null);
+      } catch (failure) {
+        if (isDisposed || readId !== latestReadId) return;
+
+        setSettingsReadError(failure instanceof Error ? failure.message : 'Unable to load settings.');
+      } finally {
+        if (!isDisposed && readId === latestReadId) setIsReadingSettings(false);
+      }
+    }
+  }, [settingsRetryId]);
 
   useEffect(() => {
     let isDisposed = false;
@@ -116,25 +156,71 @@ export default function App() {
     }));
   }
 
+  const contextNotice = activeTabContext.status === 'loading'
+    ? <Notice>Checking the active tab…</Notice>
+    : activeTabContext.status === 'error'
+      ? (
+        <Notice variant="error">
+          Having trouble reading this tab’s context. Try opening{' '}
+          <Link href="https://www.youtube.com/" target="_blank" rel="noreferrer">YouTube</Link>.
+        </Notice>
+      )
+      : null;
+
   return (
-    <div className="popup">
+    <ThemeProvider preference={preferences?.theme ?? 'system'} className="popup">
       <PopupHeader
         selectedPage={selectedPage}
         hasActiveVideo={activeTabContext.status === 'supported'}
         onNavigate={navigate}
       />
-      <main aria-labelledby={selectedPage === 'this-video' ? 'this-video-heading' : 'page-heading'}>
-
-        <ContextNotice activeTabContext={activeTabContext} />
-
-        {selectedPage === 'all-videos' && <AllVideosPage activeTabContext={activeTabContext} />}
-
-        <section hidden={selectedPage !== 'this-video'}>
-          <ThisVideoPage activeTabContext={activeTabContext} />
-        </section>
-
-        {selectedPage === 'settings' && <SettingsPage />}
+      <main className="popup-content">
+        {contextNotice}
+        {settingsReadError && selectedPage !== 'settings' && (
+          <Notice variant="error" action={<Button variant="quiet" onClick={() => setSettingsRetryId((id) => id + 1)}>Retry</Button>}>
+            {settingsReadError} Appearance and saved color preferences could not be refreshed.
+          </Notice>
+        )}
+        {isReadingSettings && !preferences ? <Skeleton /> : (
+          <>
+            <section
+              id="popup-panel-all-videos"
+              role="tabpanel"
+              aria-labelledby="popup-tab-all-videos"
+              hidden={selectedPage !== 'all-videos'}
+              tabIndex={0}
+            >
+              {selectedPage === 'all-videos' && <AllVideosPage activeTabContext={activeTabContext} />}
+            </section>
+            <section
+              id="popup-panel-this-video"
+              role="tabpanel"
+              aria-labelledby="popup-tab-this-video"
+              hidden={selectedPage !== 'this-video'}
+              tabIndex={0}
+            >
+              <ThisVideoPage activeTabContext={activeTabContext} />
+            </section>
+            <section
+              id="popup-panel-settings"
+              role="tabpanel"
+              aria-labelledby="popup-tab-settings"
+              hidden={selectedPage !== 'settings'}
+              tabIndex={0}
+            >
+              {selectedPage === 'settings' && (
+                <SettingsPage
+                  preferences={preferences}
+                  isReadingSettings={isReadingSettings}
+                  readError={settingsReadError}
+                  onRetry={() => setSettingsRetryId((id) => id + 1)}
+                  onPreferencesChange={setPreferences}
+                />
+              )}
+            </section>
+          </>
+        )}
       </main>
-    </div>
+    </ThemeProvider>
   );
 }

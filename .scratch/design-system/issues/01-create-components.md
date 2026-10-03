@@ -98,3 +98,7 @@ Verification already exercised: `npm run compile` and `npm run lint` passed; the
 Development-startup repair: the Tabler installation changed the resolved development toolchain to WXT 0.21.4 / Vite 8.3.1 and left Rolldown 1.2.11's Windows x64 native binding missing. WXT's builder discovery catches the Vite import failure and reports the misleading “Builder not found” message. Restored the exact Windows binding without deleting `node_modules` or stopping existing processes. Recovered npm-generated lock metadata for all 15 native packages already declared by Rolldown's optional dependencies; existing locked versions and root dependency declarations remain unchanged.
 
 Startup-only verification: WXT's `createServer` with browser launching disabled and a temporary output directory started on port 3013, completed the development extension build, and printed `WXT_STARTUP_OK`; its server was then stopped. Temporary output and dependency-repair files were removed. No browser or UI tests ran for this repair; user owns UI testing.
+
+### Gallery retirement after popup adoption — 2026-10-03
+
+User approved issue 2's implementation and requested removing the temporary gallery. Its entrypoint and isolated examples/fixtures/styles are retired; shared `ui/` components remain in use by the popup. Gallery requirements and verification above record the original implementation stage, not a current tooling requirement. Inspect the actual popup going forward; see [issue 2](02-use-components-in-app.md#user-approval-and-gallery-retirement--2026-10-03).

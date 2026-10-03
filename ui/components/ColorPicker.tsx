@@ -30,8 +30,8 @@ export function ColorPicker({
   const groupId = useId();
   const { resolvedTheme } = useTheme();
   const effectiveChoice = value ?? defaultChoice;
-  const resolvedColor = resolveColorChoice(value, defaultChoice, resolvedTheme);
-  const selectedValue = value === undefined && allowDefault ? 'default' : effectiveChoice.type === 'custom' ? 'custom' : effectiveChoice.preset;
+  const isInheriting = allowDefault && value === undefined;
+  const selectedValue = isInheriting ? 'default' : effectiveChoice.type === 'custom' ? 'custom' : effectiveChoice.preset;
   const defaultName = defaultChoice.type === 'custom' ? defaultChoice.value : presets.find((preset) => preset.value === defaultChoice.preset)?.label;
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export function ColorPicker({
               className="yb-color-input"
               type="color"
               aria-label={`Custom ${label.toLowerCase()}`}
-              aria-describedby={`${groupId}-color-value`}
+              aria-describedby={isInheriting ? `${groupId}-inherited-color` : undefined}
               value={customValue}
               onChange={(event) => {
                 setCustomValue(event.currentTarget.value);
@@ -82,10 +82,9 @@ export function ColorPicker({
           </label>
         )}
       </div>
-      <div className={`yb-color-detail${selectedValue === 'custom' ? '' : ' yb-sr-only'}`} id={`${groupId}-color-value`}>
-        <code className="yb-color-hex">{resolvedColor.toUpperCase()}</code>
-        {allowDefault && value === undefined && <span>Inherited default: {defaultName}</span>}
-      </div>
+      {isInheriting && (
+        <span className="yb-sr-only" id={`${groupId}-inherited-color`}>Inherited default: {defaultName}</span>
+      )}
     </fieldset>
   );
 }

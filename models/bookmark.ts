@@ -1,15 +1,17 @@
+import type { ColorChoice } from '@/models/appearance';
+
 export interface Bookmark {
   timestamp: number;
   createdAt: string;
   name?: string;
-  color?: string;
+  color?: ColorChoice;
 }
 
 /** Complete editable state; omitted name/color remove the stored name/override. */
 export interface BookmarkDraft {
   timestamp: number;
   name?: string;
-  color?: string;
+  color?: ColorChoice;
 }
 
 export interface Video {

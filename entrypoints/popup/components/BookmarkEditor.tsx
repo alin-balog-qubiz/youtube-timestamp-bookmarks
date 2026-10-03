@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState, type SubmitEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { getActiveTabContext } from '@/services/active-tab';
 import { updateBookmark } from '@/services/bookmark-client';
 import { getPlayerDuration } from '@/services/player-navigation';
-import { canAdjustTimestamp, formatTimestamp } from '@/utils/bookmark-time';
+import { canAdjustTimestamp } from '@/utils/bookmark-time';
 
 import type { ActiveTabContext } from '@/models/active-tab';
 import type { Bookmark, Video } from '@/models/bookmark';
 import type { MarkerPreferences } from '@/models/marker-preferences';
 
-import PopupDialog from './PopupDialog';
+import { BookmarkEditor as EditorDialog, type ColorChoice } from '@/ui';
 
 interface BookmarkEditorProps {
   readonly bookmark: Bookmark;
@@ -22,14 +22,13 @@ interface BookmarkEditorProps {
 }
 
 const contextChangedMessage = 'The active video changed or became unavailable. Close this dialog and reopen Edit in the correct video to save.';
-const timestampSteps = [-5, -1, 1, 5] as const;
 
 export default function BookmarkEditor(props: BookmarkEditorProps) {
   const { bookmark, videoId, tabId, activeTabContext, preferences, onSaved, onDismiss } = props;
 
   const [draftTimestamp, setDraftTimestamp] = useState(bookmark.timestamp);
   const [draftName, setDraftName] = useState(bookmark.name ?? '');
-  const [draftColor, setDraftColor] = useState(bookmark.color ?? '');
+  const [draftColor, setDraftColor] = useState<ColorChoice | undefined>(bookmark.color);
 
   const [playerDuration, setPlayerDuration] = useState<number | null>(null);
   const [isReadingDuration, setIsReadingDuration] = useState(true);
@@ -83,9 +82,7 @@ export default function BookmarkEditor(props: BookmarkEditorProps) {
     }
   }, [tabId, videoId]);
 
-  async function save(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function save() {
     if (isSaving || isContextInvalidatedRef.current)
       return;
 
@@ -105,7 +102,7 @@ export default function BookmarkEditor(props: BookmarkEditorProps) {
       const updatedVideo = await updateBookmark(videoId, bookmark.timestamp, {
         timestamp: draftTimestamp,
         name: draftName.trim() || undefined,
-        color: draftColor || undefined,
+        color: draftColor,
       }, tabId);
       if (!isEditorDisposedRef.current)
         onSaved(updatedVideo);
@@ -165,94 +162,27 @@ export default function BookmarkEditor(props: BookmarkEditorProps) {
       matchesContext(latestActiveTabContextRef.current, videoId, tabId);
   }
 
-  const isUsingDefaultColor = draftColor === '';
-  const selectedColor = draftColor || preferences.defaultColor;
+  const draft = { timestamp: draftTimestamp, name: draftName, color: draftColor };
   const isBlocked = isContextInvalidated || isContextInvalidatedRef.current;
 
   return (
-    <PopupDialog labelledBy="edit-bookmark-heading" busy={isSaving} onDismiss={onDismiss}>
-      <form onSubmit={(event) => void save(event)}>
-        <h2 id="edit-bookmark-heading">Edit bookmark</h2>
-
-        {isBlocked && <p className="error" role="alert">{contextChangedMessage}</p>}
-
-        <fieldset className="editor-fields" disabled={isSaving}>
-          <legend className="visually-hidden">Bookmark details</legend>
-
-          <p className="draft-timestamp" aria-live="polite">{formatTimestamp(draftTimestamp)}</p>
-
-          <div className="timestamp-steps" aria-label="Adjust timestamp">
-            {timestampSteps.map((step) => (
-              <button
-                key={step}
-                type="button"
-                disabled={!canAdjustTimestamp(draftTimestamp, step, playerDuration)}
-                aria-label={`${step < 0 ? 'Subtract' : 'Add'} ${Math.abs(step)} ${Math.abs(step) === 1 ? 'second' : 'seconds'}`}
-                onClick={() => setDraftTimestamp((currentTimestamp) => currentTimestamp + step)}
-              >
-                {step < 0 ? '−' : '+'}{Math.abs(step)}s
-              </button>
-            ))}
-          </div>
-
-          {isReadingDuration ? (
-            <p className="help" role="status">Reading player duration…</p>
-          ) : playerDuration === null ? (
-            <p className="help">
-              Player duration is unavailable. Timestamp adjustment is disabled; name and color can still be edited.
-            </p>
-          ) : (
-            <p className="help">Adjust within 0:00–{formatTimestamp(Math.floor(playerDuration))}.</p>
-          )}
-
-          <label className="name-field">
-            Name (optional)
-            <input
-              autoFocus
-              value={draftName}
-              onChange={(event) => setDraftName(event.target.value)}
-            />
-          </label>
-
-          <fieldset className="marker-color">
-            <legend>Marker color</legend>
-
-            <label className="color-picker">
-              Pick a color
-              <input
-                type="color"
-                value={selectedColor}
-                aria-describedby="bookmark-color-value"
-                onChange={(event) => setDraftColor(event.target.value)}
-              />
-            </label>
-
-            <button
-              type="button"
-              disabled={isUsingDefaultColor}
-              onClick={() => setDraftColor('')}
-            >
-              Use default
-            </button>
-
-            <p id="bookmark-color-value" className="help">
-              {isUsingDefaultColor ? `Using default (${selectedColor}).` : `Custom color: ${selectedColor}.`}
-            </p>
-          </fieldset>
-        </fieldset>
-
-        {saveError && <p className="error" role="alert">{saveError}</p>}
-
-        <div className="dialog-actions">
-          <button type="button" disabled={isSaving} onClick={onDismiss}>
-            Cancel
-          </button>
-          <button type="submit" disabled={isSaving || isBlocked}>
-            {isSaving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-      </form>
-    </PopupDialog>
+    <EditorDialog
+      open
+      onClose={onDismiss}
+      draft={draft}
+      onDraftChange={(updatedDraft) => {
+        setDraftTimestamp(updatedDraft.timestamp);
+        setDraftName(updatedDraft.name);
+        setDraftColor(updatedDraft.color);
+      }}
+      onSave={() => void save()}
+      maxTimestamp={isReadingDuration ? null : playerDuration}
+      originalTimestamp={bookmark.timestamp}
+      defaultChoice={preferences.defaultColor}
+      pending={isSaving}
+      error={saveError ?? undefined}
+      contextError={isBlocked ? contextChangedMessage : undefined}
+    />
   );
 }
 

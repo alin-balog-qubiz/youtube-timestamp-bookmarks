@@ -31,7 +31,7 @@ export function VideoGroup({
   onDeleteVideo,
   onSeek,
 }: VideoGroupProps) {
-  const displayTitle = title?.trim() || `Video ${videoId}`;
+  const displayTitle = title?.trim() || videoId;
   const countLabel = `${bookmarks.length} saved ${bookmarks.length === 1 ? 'bookmark' : 'bookmarks'}`;
 
   return (

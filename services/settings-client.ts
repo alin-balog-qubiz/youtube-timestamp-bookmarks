@@ -1,5 +1,7 @@
 import { browser } from 'wxt/browser';
 
+import { normalizeStoredMarkerPreferences } from '@/services/marker-preferences';
+
 import type { Backup, ImportMode, ImportPreview } from '@/models/backup';
 import type { MarkerPreferences } from '@/models/marker-preferences';
 import type {
@@ -19,7 +21,7 @@ export async function getSettings(): Promise<MarkerPreferences> {
   const response = await browser.runtime.sendMessage<GetSettingsRequest, GetSettingsResponse>({
     type: 'settings:get',
   });
-  if (response?.ok) return response.value;
+  if (response?.ok) return normalizeStoredMarkerPreferences(response.value);
 
   throw new Error(response?.error ?? 'Settings storage did not respond');
 }
@@ -29,7 +31,7 @@ export async function updateSettings(settings: MarkerPreferences): Promise<Marke
     type: 'settings:update',
     settings,
   });
-  if (response?.ok) return response.value;
+  if (response?.ok) return normalizeStoredMarkerPreferences(response.value);
 
   throw new Error(response?.error ?? 'Settings storage did not respond');
 }

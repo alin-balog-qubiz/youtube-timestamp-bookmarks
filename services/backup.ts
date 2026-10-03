@@ -2,16 +2,19 @@ import { storage } from 'wxt/utils/storage';
 
 import {
   getVideoStorageKey,
+  normalizeStoredVideo,
   serializeLibraryMutation,
   videoStoragePrefix,
 } from '@/services/bookmarks';
 import {
   defaultMarkerPreferences,
-  isMarkerColor,
   markerPreferencesStorageKey,
+  normalizeStoredMarkerPreferences,
+  validateLegacyMarkerPreferences,
   validateMarkerPreferences,
 } from '@/services/marker-preferences';
 
+import { validateColorChoice, validateLegacyColor } from '@/models/appearance';
 import type { Backup, ImportMode, ImportPreview } from '@/models/backup';
 import type { Bookmark, Video } from '@/models/bookmark';
 
@@ -21,20 +24,20 @@ const daysByMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 type StorageWrite = { key: `local:${string}`; value: Video | Backup['settings'] | null };
 
-/** Validate and copy every version-1 field without normalizing metadata values. */
+/** Validate either strict wire version and normalize legacy values to version 2. */
 export function validateBackup(value: unknown): Backup {
   const backup = validateObject(value, 'Backup', ['format', 'version', 'videos', 'settings']);
   if (backup.format !== backupFormat)
     throw new Error(`Backup.format must be "${backupFormat}"`);
-  if (backup.version !== 1)
-    throw new Error('Backup.version must be 1; this backup version is not supported');
+  if (backup.version !== 1 && backup.version !== 2)
+    throw new Error('Backup.version must be 1 or 2; this backup version is not supported');
   if (!Array.isArray(backup.videos))
     throw new Error('Backup.videos must be an array');
 
   const videoIds = new Set<string>();
   const videos = backup.videos.map((value, index) => {
     const field = `Backup.videos[${index}]`;
-    const video = validateVideo(value, field);
+    const video = validateVideo(value, field, backup.version === 1);
     if (videoIds.has(video.id))
       throw new Error(`${field}.id duplicates video ID "${video.id}"`);
 
@@ -45,13 +48,15 @@ export function validateBackup(value: unknown): Backup {
 
   return {
     format: backupFormat,
-    version: 1,
+    version: 2,
     videos,
-    settings: validateMarkerPreferences(backup.settings),
+    settings: backup.version === 1
+      ? validateLegacyMarkerPreferences(backup.settings)
+      : validateMarkerPreferences(backup.settings),
   };
 }
 
-function validateVideo(value: unknown, field: string): Video {
+function validateVideo(value: unknown, field: string, isLegacy: boolean): Video {
   const video = validateObject(value, field, ['id', 'title', 'bookmarks']);
   if (typeof video.id !== 'string' || !video.id.trim())
     throw new Error(`${field}.id must be nonblank text`);
@@ -70,7 +75,7 @@ function validateVideo(value: unknown, field: string): Video {
   timestamps.sort((left, right) => left - right);
   for (const timestamp of timestamps) {
     const bookmarkField = `${field}.bookmarks["${timestamp}"]`;
-    const bookmark = validateBookmark(sourceBookmarks[timestamp], bookmarkField);
+    const bookmark = validateBookmark(sourceBookmarks[timestamp], bookmarkField, isLegacy);
     if (bookmark.timestamp !== timestamp)
       throw new Error(`${bookmarkField}.timestamp must match its bookmark key`);
 
@@ -84,7 +89,7 @@ function validateVideo(value: unknown, field: string): Video {
   };
 }
 
-function validateBookmark(value: unknown, field: string): Bookmark {
+function validateBookmark(value: unknown, field: string, isLegacy: boolean): Bookmark {
   const bookmark = validateObject(value, field, ['timestamp', 'createdAt', 'name', 'color']);
   if (
     typeof bookmark.timestamp !== 'number' ||
@@ -96,14 +101,17 @@ function validateBookmark(value: unknown, field: string): Bookmark {
     throw new Error(`${field}.createdAt must be a valid ISO creation date with a time zone`);
   if (Object.hasOwn(bookmark, 'name') && typeof bookmark.name !== 'string')
     throw new Error(`${field}.name must be text when present`);
-  if (Object.hasOwn(bookmark, 'color') && !isMarkerColor(bookmark.color))
-    throw new Error(`${field}.color must be a six-digit hex color (#rrggbb) when present`);
+  const color = Object.hasOwn(bookmark, 'color')
+    ? isLegacy
+      ? validateLegacyColor(bookmark.color, `${field}.color`)
+      : validateColorChoice(bookmark.color, `${field}.color`)
+    : undefined;
 
   return {
     timestamp: bookmark.timestamp,
     createdAt: bookmark.createdAt,
     ...(typeof bookmark.name === 'string' ? { name: bookmark.name } : {}),
-    ...(typeof bookmark.color === 'string' ? { color: bookmark.color } : {}),
+    ...(color ? { color } : {}),
   };
 }
 
@@ -134,13 +142,15 @@ async function getBackupInStorage(): Promise<Backup> {
   const snapshot = await storage.snapshot('local');
   const videos = Object.entries(snapshot)
     .filter(([key, value]) => key.startsWith(videoStoragePrefix) && value !== null)
-    .map(([, value]) => value);
+    .map(([, value]) => normalizeStoredVideo(value as Video));
 
   return validateBackup({
     format: backupFormat,
-    version: 1,
+    version: 2,
     videos,
-    settings: snapshot[markerPreferencesStorageKey.slice('local:'.length)] ?? defaultMarkerPreferences,
+    settings: normalizeStoredMarkerPreferences(
+      snapshot[markerPreferencesStorageKey.slice('local:'.length)] ?? defaultMarkerPreferences,
+    ),
   });
 }
 
@@ -261,7 +271,7 @@ function validateObject(value: unknown, field: string, allowedFields?: string[])
   if (allowedFields) {
     for (const key of Object.keys(object)) {
       if (!allowedFields.includes(key))
-        throw new Error(`${field}.${key} is not supported in backup version 1`);
+        throw new Error(`${field}.${key} is not supported in this backup schema`);
     }
   }
 

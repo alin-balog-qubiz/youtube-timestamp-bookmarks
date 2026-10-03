@@ -55,7 +55,7 @@ export function BookmarkRow({
         disabled={disabled}
         items={[
           { label: 'Edit bookmark', icon: 'edit', onSelect: onEdit },
-          { label: 'Copy bookmark link', icon: 'copy', onSelect: onCopy },
+          { label: 'Copy timestamped link', icon: 'copy', onSelect: onCopy },
           { label: 'Delete bookmark', icon: 'trash', onSelect: onDelete, danger: true },
         ]}
       />

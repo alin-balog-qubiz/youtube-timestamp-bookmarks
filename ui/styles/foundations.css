@@ -184,8 +184,6 @@
 .yb-ui .yb-color-input::-webkit-color-swatch { border: 1px solid var(--yb-control-border); border-radius: 4px; }
 .yb-ui .yb-color-input::-moz-color-swatch { border: 1px solid var(--yb-control-border); border-radius: 4px; }
 .yb-ui .yb-color-default:has(input:disabled), .yb-ui .yb-color-custom-control:has(input:disabled) { opacity: .55; cursor: not-allowed; }
-.yb-ui .yb-color-detail { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-top: 8px; color: var(--yb-muted); font-size: 12px; }
-.yb-ui .yb-color-hex { min-width: 7ch; font-variant-numeric: tabular-nums; color: var(--yb-fg); }
 
 .yb-ui .yb-link { color: var(--yb-accent); text-decoration: underline; text-underline-offset: 3px; font-size: inherit; }
 .yb-ui .yb-surface { border: 1px solid var(--yb-border); border-radius: var(--yb-radius-card); background: var(--yb-bg); color: var(--yb-fg); min-width: 0; }

@@ -2,6 +2,7 @@ import { storage } from 'wxt/utils/storage';
 
 import { formatTimestamp } from '@/utils/bookmark-time';
 
+import { validateColorChoice, validateLegacyColor } from '@/models/appearance';
 import type { BookmarkDraft, CreateBookmarkResult, Video } from '@/models/bookmark';
 
 export const videoStoragePrefix = 'videos:v1:';
@@ -24,11 +25,12 @@ async function createBookmarkInStorage(
   title?: string,
 ): Promise<CreateBookmarkResult> {
   const key = getVideoStorageKey(videoId);
-  const storedVideo = await storage.getItem<Video>(key);
+  const savedVideo = await storage.getItem<Video>(key);
+  const storedVideo = savedVideo ? normalizeStoredVideo(savedVideo) : null;
   const existingBookmark = storedVideo?.bookmarks[timestamp];
   const updatedTitle = title?.trim();
   const titleChanged = !!updatedTitle && updatedTitle !== storedVideo?.title;
-  if (existingBookmark && !titleChanged)
+  if (existingBookmark && !titleChanged && storedVideo === savedVideo)
     return 'already-saved';
 
   const video: Video = storedVideo
@@ -46,7 +48,8 @@ async function createBookmarkInStorage(
 }
 
 export async function getVideo(videoId: string): Promise<Video | null> {
-  return storage.getItem<Video>(getVideoStorageKey(videoId));
+  const video = await storage.getItem<Video>(getVideoStorageKey(videoId));
+  return video ? normalizeStoredVideo(video) : null;
 }
 
 /** Background-only: accepts a validated draft and runs the live-context guard while holding the video's mutation queue. */
@@ -58,7 +61,7 @@ export function updateBookmark(
 ): Promise<Video> {
   return serializeVideoMutation(videoId, async () => {
     const key = getVideoStorageKey(videoId);
-    const video = await storage.getItem<Video>(key);
+    const video = await getVideo(videoId);
     const bookmark = video?.bookmarks[originalTimestamp];
     if (!video || !bookmark)
       throw new Error('This bookmark no longer exists. Close and reopen the editor.');
@@ -88,7 +91,7 @@ export function updateBookmark(
 export function deleteBookmark(videoId: string, timestamp: number): Promise<Video | null> {
   return serializeVideoMutation(videoId, async () => {
     const key = getVideoStorageKey(videoId);
-    const video = await storage.getItem<Video>(key);
+    const video = await getVideo(videoId);
     if (!video || !video.bookmarks[timestamp]) return video;
 
     const bookmarks = { ...video.bookmarks };
@@ -127,8 +130,28 @@ export async function listVideos(): Promise<Video[]> {
   const items = await storage.snapshot('local');
   return Object.entries(items)
     .filter(([key, value]) => key.startsWith(videoStoragePrefix) && value !== null)
-    .map(([, value]) => value as Video)
+    .map(([, value]) => normalizeStoredVideo(value as Video))
     .filter((video) => Object.keys(video.bookmarks).length > 0);
+}
+
+/** Read-only normalization; callers persist migrated records only through the background queues. */
+export function normalizeStoredVideo(video: Video): Video {
+  let bookmarks: Video['bookmarks'] | undefined;
+  for (const [timestamp, bookmark] of Object.entries(video.bookmarks)) {
+    if (!Object.hasOwn(bookmark, 'color')) continue;
+
+    const field = `Video "${video.id}".bookmarks["${timestamp}"].color`;
+    if (typeof bookmark.color !== 'string') {
+      validateColorChoice(bookmark.color, field);
+      continue;
+    }
+
+    const color = validateLegacyColor(bookmark.color, field);
+    bookmarks ??= { ...video.bookmarks };
+    bookmarks[Number(timestamp)] = { ...bookmark, color };
+  }
+
+  return bookmarks ? { ...video, bookmarks } : video;
 }
 
 export function getVideoStorageKey(videoId: string) {

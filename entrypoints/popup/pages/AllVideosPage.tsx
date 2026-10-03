@@ -3,15 +3,14 @@ import { browser } from 'wxt/browser';
 
 import { deleteVideoBookmarks } from '@/services/bookmark-client';
 import { listVideos } from '@/services/bookmarks';
-import { getMarkerPreferences, resolveBookmarkColor } from '@/services/marker-preferences';
+import { getMarkerPreferences } from '@/services/marker-preferences';
 import { openBookmark } from '@/services/player-navigation';
-import { formatTimestamp } from '@/utils/bookmark-time';
 
 import type { ActiveTabContext } from '@/models/active-tab';
 import type { Video } from '@/models/bookmark';
 import type { MarkerPreferences } from '@/models/marker-preferences';
 
-import PopupDialog from '../components/PopupDialog';
+import { Button, ConfirmationDialog, EmptyState, ErrorState, Link, Notice, SearchInput, Skeleton, Toast, VideoGroup } from '@/ui';
 
 interface AllVideosPageProps {
   activeTabContext: ActiveTabContext;
@@ -43,6 +42,8 @@ export default function AllVideosPage({ activeTabContext }: AllVideosPageProps) 
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
+  const [expandedVideoIds, setExpandedVideoIds] = useState<Set<string>>(() => new Set());
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   const latestRefreshIdRef = useRef(0);
   const latestPlaybackIdRef = useRef(0);
@@ -120,6 +121,19 @@ export default function AllVideosPage({ activeTabContext }: AllVideosPageProps) 
     }
   }
 
+  async function goToVideo(videoId: string) {
+    const playbackId = ++latestPlaybackIdRef.current;
+    setPlaybackError(null);
+
+    try {
+      await browser.tabs.create({ url: `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}` });
+    } catch (failure) {
+      if (!isDisposedRef.current && playbackId === latestPlaybackIdRef.current) {
+        setPlaybackError(failure instanceof Error ? failure.message : 'Unable to open this video.');
+      }
+    }
+  }
+
   async function confirmDeletion() {
     if (!deletion || isDeleting) return;
 
@@ -131,6 +145,7 @@ export default function AllVideosPage({ activeTabContext }: AllVideosPageProps) 
       if (isDisposedRef.current) return;
 
       setDeletion(null);
+      setFeedback('Saved video deleted.');
       // Read again rather than hiding a concurrent quick add after the deletion.
       void refreshLibraryRef.current?.();
     } catch (failure) {
@@ -150,131 +165,73 @@ export default function AllVideosPage({ activeTabContext }: AllVideosPageProps) 
 
   return (
     <>
-      <h1 id="page-heading" aria-live="polite">All videos</h1>
+      <h1 className="yb-sr-only">All videos</h1>
+      <SearchInput label="Filter by video title" labelHidden value={query} onChange={setQuery} placeholder="Search saved titles" />
 
-      <div className="video-search">
-        <label htmlFor="video-title-search">Filter by video title</label>
-        <div className="video-search-controls">
-          <input
-            id="video-title-search"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search saved titles"
-          />
-          {query !== '' && <button type="button" onClick={() => setQuery('')}>Clear search</button>}
-        </div>
-      </div>
-
-      {libraryState.status === 'loading' && <p role="status">Loading saved videos…</p>}
-
+      {libraryState.status === 'loading' && <Skeleton label="Loading saved videos" />}
       {libraryState.status === 'error' && (
-        <div className="read-error">
-          <p className="error" role="alert">{libraryState.error}</p>
-          <button type="button" onClick={() => setRetryId((currentId) => currentId + 1)}>Retry</button>
-        </div>
+        <ErrorState title="Unable to load saved videos" onRetry={() => setRetryId((currentId) => currentId + 1)}>
+          {libraryState.error}
+        </ErrorState>
       )}
-
       {libraryState.status === 'ready' && orderedVideos.length === 0 && (
-        <p>
-          No saved videos yet. {activeTabContext.status === 'supported' ? (
+        <EmptyState title="No saved videos yet">
+          {activeTabContext.status === 'supported' ? (
             <>Use the <strong>+</strong> button in the YouTube player to save a moment.</>
           ) : (
-            <>Open a video on <a href="https://www.youtube.com/" target="_blank" rel="noreferrer">YouTube</a> and use the player <strong>+</strong> button to save a moment.</>
+            <>Open a video on <Link href="https://www.youtube.com/" target="_blank" rel="noreferrer">YouTube</Link> and use the player <strong>+</strong> button to save a moment.</>
           )}
-        </p>
+        </EmptyState>
       )}
-
       {libraryState.status === 'ready' && orderedVideos.length > 0 && matchingVideos.length === 0 && (
-        <p role="status">No matching videos. Clear the search to show all saved videos.</p>
+        <EmptyState title="No matching videos" action={<Button onClick={() => setQuery('')}>Clear search</Button>}>
+          No saved titles match this search.
+        </EmptyState>
       )}
-
       {preferences && matchingVideos.length > 0 && (
-        <ul className="video-list">
-          {matchingVideos.map(({ video, bookmarks }) => {
-            const title = video.title || video.id;
-
-            return (
-              <li key={video.id} className="saved-video">
-                <a
-                  className="saved-video-title"
-                  href={`https://www.youtube.com/watch?v=${encodeURIComponent(video.id)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {title}
-                </a>
-                <div className="bookmark-toolbar">
-                  <span>{bookmarks.length} {bookmarks.length === 1 ? 'bookmark' : 'bookmarks'}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDeleteError(null);
-                      setDeletion({ videoId: video.id, title, count: bookmarks.length });
-                    }}
-                  >
-                    Delete all bookmarks
-                  </button>
-                </div>
-                <details className="video-moments">
-                  <summary aria-label={`Show bookmarks for ${title}`}>Saved moments</summary>
-                  <ul className="bookmark-list">
-                    {bookmarks.map((bookmark) => {
-                      const resolvedColor = resolveBookmarkColor(bookmark, preferences);
-
-                      return (
-                        <li key={bookmark.timestamp} className="bookmark-row">
-                          <span
-                            className="color-swatch"
-                            style={{ backgroundColor: resolvedColor }}
-                            role="img"
-                            aria-label={`${resolvedColor}${bookmark.color ? '' : ' (default)'} marker`}
-                          />
-                          <button
-                            type="button"
-                            className="timestamp-link"
-                            aria-label={`Play ${title} at ${formatTimestamp(bookmark.timestamp)}`}
-                            onClick={() => void playBookmark(video.id, bookmark.timestamp)}
-                          >
-                            {formatTimestamp(bookmark.timestamp)}
-                          </button>
-                          <span className="bookmark-name">{bookmark.name}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </details>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="yb-video-list">
+          {matchingVideos.map(({ video, bookmarks }) => (
+            <VideoGroup
+              key={video.id}
+              videoId={video.id}
+              title={video.title}
+              bookmarks={bookmarks.map((bookmark) => ({ ...bookmark, id: String(bookmark.timestamp) }))}
+              defaultChoice={preferences.defaultColor}
+              expanded={expandedVideoIds.has(video.id)}
+              onExpandedChange={(expanded) => {
+                setExpandedVideoIds((currentIds) => {
+                  const updatedIds = new Set(currentIds);
+                  if (expanded) updatedIds.add(video.id);
+                  else updatedIds.delete(video.id);
+                  return updatedIds;
+                });
+              }}
+              onGoToVideo={() => void goToVideo(video.id)}
+              onSeek={(bookmark) => void playBookmark(video.id, bookmark.timestamp)}
+              onDeleteVideo={() => {
+                setDeleteError(null);
+                setDeletion({ videoId: video.id, title: video.title || video.id, count: bookmarks.length });
+              }}
+            />
+          ))}
+        </div>
       )}
-
-      {playbackError && <p className="error" role="alert">{playbackError}</p>}
+      {playbackError && <Notice variant="error">{playbackError}</Notice>}
+      <Toast message={feedback} onDismiss={() => setFeedback(null)} />
 
       {deletion && (
-        <PopupDialog
-          labelledBy="delete-video-bookmarks-heading"
-          busy={isDeleting}
-          onDismiss={() => setDeletion(null)}
+        <ConfirmationDialog
+          open
+          title="Delete video?"
+          pending={isDeleting}
+          error={deleteError ?? undefined}
+          onClose={() => setDeletion(null)}
+          onConfirm={() => void confirmDeletion()}
+          confirmLabel="Delete video"
         >
-          <h2 id="delete-video-bookmarks-heading">Delete all bookmarks?</h2>
-          <p>Delete all <strong>{deletion.count} {deletion.count === 1 ? 'bookmark' : 'bookmarks'}</strong> for <strong>{deletion.title}</strong>?</p>
-          <p className="help">This cannot be undone.</p>
-          {deleteError && <p className="error" role="alert">{deleteError}</p>}
-
-          <div className="dialog-actions">
-            <button type="button" autoFocus disabled={isDeleting} onClick={() => setDeletion(null)}>Cancel</button>
-            <button
-              type="button"
-              className="destructive"
-              disabled={isDeleting}
-              onClick={() => void confirmDeletion()}
-            >
-              {isDeleting ? 'Deleting…' : 'Delete'}
-            </button>
-          </div>
-        </PopupDialog>
+          <p>Delete <strong>{deletion.title}</strong> ({deletion.videoId}) and its <strong>{deletion.count} saved {deletion.count === 1 ? 'bookmark' : 'bookmarks'}</strong>?</p>
+          <p>Only this video's saved data is removed. The YouTube source is unaffected. This cannot be undone.</p>
+        </ConfirmationDialog>
       )}
     </>
   );

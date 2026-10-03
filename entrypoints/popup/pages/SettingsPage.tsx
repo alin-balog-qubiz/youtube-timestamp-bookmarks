@@ -2,31 +2,42 @@ import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 
 import { validateBackup } from '@/services/backup';
-import { getBackup, getSettings, importBackup, previewImport, updateSettings } from '@/services/settings-client';
+import { getBackup, importBackup, previewImport, updateSettings } from '@/services/settings-client';
 
-import type { Backup, ImportMode, ImportPreview } from '@/models/backup';
+import type { ColorChoice, ThemePreference } from '@/models/appearance';
+import type { Backup, ImportMode, ImportPreview as ImportPreviewData } from '@/models/backup';
 import type { MarkerPreferences } from '@/models/marker-preferences';
 
-type SettingsOperation = 'saving' | 'exporting' | 'reading-file' | 'previewing' | 'importing';
+import {
+  Button, ColorPicker, ErrorState, Icon, ImportPreview, Notice, SettingGroup,
+  SettingRow, Skeleton, Switch, ThemeChoice, Toast,
+} from '@/ui';
 
-export default function SettingsPage() {
-  const [preferences, setPreferences] = useState<MarkerPreferences | null>(null);
-  const [isReadingSettings, setIsReadingSettings] = useState(true);
-  const [readError, setReadError] = useState<string | null>(null);
-  const [retryId, setRetryId] = useState(0);
+type SettingsOperation = 'saving' | 'exporting' | 'reading-file' | 'previewing' | 'importing';
+type SettingsPageProps = {
+  preferences: MarkerPreferences | null;
+  isReadingSettings: boolean;
+  readError: string | null;
+  onRetry: () => void;
+  onPreferencesChange: (saved: MarkerPreferences) => void;
+};
+
+const themeLabels: Record<ThemePreference, string> = { light: 'Light', dark: 'Dark', system: 'System' };
+
+export default function SettingsPage({
+  preferences, isReadingSettings, readError, onRetry, onPreferencesChange,
+}: SettingsPageProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [hasSavedPreferences, setHasSavedPreferences] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const [operation, setOperation] = useState<SettingsOperation | null>(null);
 
   const [exportError, setExportError] = useState<string | null>(null);
-  const [exportedFilename, setExportedFilename] = useState<string | null>(null);
   const [incomingBackup, setIncomingBackup] = useState<Backup | null>(null);
   const [selectedFilename, setSelectedFilename] = useState<string | null>(null);
-  const [importMode, setImportMode] = useState<ImportMode | null>(null);
-  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [importMode, setImportMode] = useState<ImportMode>('merge');
+  const [importPreview, setImportPreview] = useState<ImportPreviewData | null>(null);
   const [hasAcknowledgedReplace, setHasAcknowledgedReplace] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
-  const [importFeedback, setImportFeedback] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isDisposedRef = useRef(false);
@@ -35,6 +46,7 @@ export default function SettingsPage() {
   const downloadControllerRef = useRef<AbortController | null>(null);
 
   const isBusy = isReadingSettings || operation !== null;
+  const preferencesDisabled = isBusy || readError !== null;
 
   useEffect(() => {
     isDisposedRef.current = false;
@@ -46,45 +58,25 @@ export default function SettingsPage() {
     };
   }, []);
 
-  useEffect(() => {
-    let isReadDisposed = false;
-    setIsReadingSettings(true);
-    setReadError(null);
-    void readSettings();
-
-    return () => {
-      isReadDisposed = true;
-    };
-
-    async function readSettings() {
-      try {
-        const savedPreferences = await getSettings();
-        if (!isReadDisposed) setPreferences(savedPreferences);
-      } catch (failure) {
-        if (!isReadDisposed) setReadError(getErrorMessage(failure, 'Unable to load marker preferences.'));
-      } finally {
-        if (!isReadDisposed) setIsReadingSettings(false);
-      }
-    }
-  }, [retryId]);
-
   async function savePreferences(nextPreferences: MarkerPreferences) {
+    if (!preferences || readError) return;
+
     const operationId = beginOperation('saving');
     if (operationId === null) return;
 
     clearPreview();
     setSaveError(null);
-    setHasSavedPreferences(false);
+    setFeedback(null);
 
     try {
       const savedPreferences = await updateSettings(nextPreferences);
       if (!isCurrentOperation(operationId)) return;
 
-      setPreferences(savedPreferences);
-      setHasSavedPreferences(true);
+      onPreferencesChange(savedPreferences);
+      setFeedback('Preferences saved.');
     } catch (failure) {
       if (isCurrentOperation(operationId)) {
-        setSaveError(getErrorMessage(failure, 'Unable to save marker preferences. Your saved values are unchanged.'));
+        setSaveError(getErrorMessage(failure, 'Unable to save preferences.'));
       }
     } finally {
       finishOperation(operationId);
@@ -96,7 +88,7 @@ export default function SettingsPage() {
     if (operationId === null) return;
 
     setExportError(null);
-    setExportedFilename(null);
+    setFeedback(null);
 
     try {
       const backup = await getBackup();
@@ -106,7 +98,7 @@ export default function SettingsPage() {
       const controller = new AbortController();
       downloadControllerRef.current = controller;
       await downloadBackup(backup, filename, controller.signal);
-      if (isCurrentOperation(operationId)) setExportedFilename(filename);
+      if (isCurrentOperation(operationId)) setFeedback(`Backup downloaded: ${filename}`);
     } catch (failure) {
       if (isCurrentOperation(operationId)) {
         setExportError(getErrorMessage(failure, 'Unable to export the backup. Please retry.'));
@@ -118,15 +110,13 @@ export default function SettingsPage() {
   }
 
   async function selectImportFile(file: File | undefined) {
-    if (isBusy) return;
-
-    resetImport(false);
-    setImportFeedback(null);
     if (!file) return;
 
     const operationId = beginOperation('reading-file');
     if (operationId === null) return;
 
+    resetImport(false);
+    setFeedback(null);
     setSelectedFilename(file.name);
 
     try {
@@ -136,6 +126,10 @@ export default function SettingsPage() {
       const parsed: unknown = JSON.parse(text);
       const backup = validateBackup(parsed);
       setIncomingBackup(backup);
+      setImportMode('merge');
+      operationRef.current = 'previewing';
+      setOperation('previewing');
+      await readPreview(backup, 'merge', operationId);
     } catch (failure) {
       if (isCurrentOperation(operationId)) {
         setImportError(getErrorMessage(failure, 'Unable to read this JSON backup.'));
@@ -145,61 +139,61 @@ export default function SettingsPage() {
     }
   }
 
-  function selectImportMode(mode: ImportMode) {
-    if (isBusy) return;
-
-    clearPreview();
-    setImportMode(mode);
-    setImportError(null);
-    setImportFeedback(null);
-  }
-
-  async function generatePreview() {
-    if (!incomingBackup || !importMode) return;
+  async function generatePreview(mode: ImportMode = importMode) {
+    if (!incomingBackup) return;
 
     const operationId = beginOperation('previewing');
     if (operationId === null) return;
 
     clearPreview();
+    setImportMode(mode);
     setImportError(null);
-    setImportFeedback(null);
+    setFeedback(null);
 
     try {
-      const preview = await previewImport(incomingBackup, importMode);
-      if (isCurrentOperation(operationId)) setImportPreview(preview);
-    } catch (failure) {
-      if (isCurrentOperation(operationId)) {
-        setImportError(getErrorMessage(failure, 'Unable to preview this import. Please retry.'));
-      }
+      await readPreview(incomingBackup, mode, operationId);
     } finally {
       finishOperation(operationId);
     }
   }
 
+  async function readPreview(backup: Backup, mode: ImportMode, operationId: number) {
+    try {
+      const preview = await previewImport(backup, mode);
+      if (isCurrentOperation(operationId)) setImportPreview(preview);
+    } catch (failure) {
+      if (isCurrentOperation(operationId)) {
+        setImportError(getErrorMessage(failure, 'Unable to preview this import. Refresh the preview to retry.'));
+      }
+    }
+  }
+
   async function confirmImport() {
-    if (!importPreview || (importPreview.mode === 'replace' && !hasAcknowledgedReplace)) return;
+    if (
+      !importPreview || importError || importPreview.mode !== importMode ||
+      (importPreview.mode === 'replace' && !hasAcknowledgedReplace)
+    ) return;
 
     const operationId = beginOperation('importing');
     if (operationId === null) return;
 
     setImportError(null);
-    setImportFeedback(null);
+    setFeedback(null);
 
     try {
       const result = await importBackup(importPreview);
       if (!isCurrentOperation(operationId)) return;
 
-      setPreferences(result.mode === 'replace' ? result.incoming.settings : result.current.settings);
-      setReadError(null);
+      onPreferencesChange(result.mode === 'replace' ? result.incoming.settings : result.current.settings);
       setSaveError(null);
-      setHasSavedPreferences(false);
       resetImport();
-      setImportFeedback(result.mode === 'merge'
+      setFeedback(result.mode === 'merge'
         ? `Import complete: ${result.additions} bookmarks added; ${result.skippedDuplicates} duplicates skipped. Existing bookmarks and settings were kept.`
         : `Replace complete: ${result.incomingBookmarks} bookmarks in ${result.incomingVideos} videos and the imported settings are saved.`);
     } catch (failure) {
       if (isCurrentOperation(operationId)) {
-        setImportError(getErrorMessage(failure, 'Unable to import the backup. Please retry or generate Preview again.'));
+        clearPreview();
+        setImportError(getErrorMessage(failure, 'Unable to import the backup. Refresh the preview before retrying.'));
       }
     } finally {
       finishOperation(operationId);
@@ -207,17 +201,17 @@ export default function SettingsPage() {
   }
 
   function cancelImport() {
-    if (isBusy) return;
+    if (isBusy || operationRef.current !== null) return;
 
     resetImport();
-    setImportFeedback(null);
+    setFeedback(null);
   }
 
   function resetImport(clearFileSelection = true) {
     if (clearFileSelection && fileInputRef.current) fileInputRef.current.value = '';
     setIncomingBackup(null);
     setSelectedFilename(null);
-    setImportMode(null);
+    setImportMode('merge');
     clearPreview();
     setImportError(null);
   }
@@ -247,160 +241,155 @@ export default function SettingsPage() {
     setOperation(null);
   }
 
+  const settingsChanges = importPreview
+    ? describeSettingsChanges(importPreview.current.settings, importPreview.incoming.settings)
+    : [];
+
   return (
     <div className="settings-page">
-      <h1 id="page-heading" aria-live="polite">Settings</h1>
+      <h1 id="page-heading" className="yb-sr-only">Settings</h1>
+      {isReadingSettings && <Skeleton rows={3} label="Loading preferences" />}
+      {readError && (
+        <ErrorState title="Unable to load preferences" onRetry={onRetry} pending={isBusy}>
+          {readError}
+        </ErrorState>
+      )}
 
-      <section aria-labelledby="player-markers-heading">
-        <h2 id="player-markers-heading">Player markers</h2>
-        {isReadingSettings && <p role="status">Loading marker preferences…</p>}
-        {readError && (
-          <div className="read-error">
-            <p className="error" role="alert">{readError}</p>
-            <button type="button" disabled={isBusy} onClick={() => setRetryId((currentId) => currentId + 1)}>
-              Retry
-            </button>
-          </div>
-        )}
-
-        {preferences && (
-          <fieldset className="settings-fields" disabled={isBusy || readError !== null}>
-            <legend className="visually-hidden">Player marker preferences</legend>
-            <label className="settings-checkbox">
-              <input
-                type="checkbox"
-                checked={preferences.showMarkers}
-                onChange={(event) => void savePreferences({ ...preferences, showMarkers: event.target.checked })}
-              />
-              Show player markers
-            </label>
-            <label className="settings-color">
-              Default marker color
-              <input
-                type="color"
-                value={preferences.defaultColor.toLowerCase()}
-                aria-describedby="default-marker-color-value"
-                onChange={(event) => void savePreferences({ ...preferences, defaultColor: event.target.value })}
-              />
-            </label>
-            <p id="default-marker-color-value" className="help">Saved color: {preferences.defaultColor}</p>
-          </fieldset>
-        )}
-
-        {operation === 'saving' && <p role="status">Saving preferences…</p>}
-        {hasSavedPreferences && <p role="status">Preferences saved.</p>}
-        {saveError && <p className="error" role="alert">{saveError} The controls show the last saved values.</p>}
-        <p className="help">
-          The default color applies only to bookmarks without a custom color. Use default in the bookmark editor restores inheritance.
-        </p>
-        <p className="help">
-          Marker rendering is a separate feature; these preferences do not add timeline markers yet. Quick add and popup browsing are unaffected.
-        </p>
-      </section>
-
-      <section aria-labelledby="backup-restore-heading">
-        <h2 id="backup-restore-heading">Backup &amp; restore</h2>
-        <p className="help">Export the entire library and settings, regardless of the active video or title filter.</p>
-        <button type="button" disabled={isBusy} onClick={() => void exportLibrary()}>
-          {operation === 'exporting' ? 'Exporting…' : 'Export JSON backup'}
-        </button>
-        {operation === 'exporting' && <p role="status">Waiting for the backup download to finish…</p>}
-        {exportedFilename && <p role="status">Backup downloaded: {exportedFilename}</p>}
-        {exportError && <p className="error" role="alert">{exportError}</p>}
-
-        <div className="settings-import">
-          <h3>Import JSON backup</h3>
-          <p className="help">Choose a file, choose a mode, preview the effects, then confirm. Nothing is saved before confirmation.</p>
-          <label className="settings-file">
-            Choose JSON backup file
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json,application/json"
-              disabled={isBusy}
-              onChange={(event) => void selectImportFile(event.target.files?.[0])}
-            />
-          </label>
-          {operation === 'reading-file' && <p role="status">Reading and validating the backup…</p>}
-          {selectedFilename && !incomingBackup && (
-            <button type="button" disabled={isBusy} onClick={cancelImport}>Cancel import</button>
-          )}
-          {incomingBackup && (
-            <>
-              <p className="help">Validated backup: {selectedFilename}</p>
-              <fieldset className="settings-import-modes" disabled={isBusy}>
-                <legend>Import mode</legend>
-                <label className="settings-checkbox">
-                  <input type="radio" name="import-mode" checked={importMode === 'merge'} onChange={() => selectImportMode('merge')} />
-                  Merge — keep existing bookmarks and settings
-                </label>
-                <label className="settings-checkbox">
-                  <input type="radio" name="import-mode" checked={importMode === 'replace'} onChange={() => selectImportMode('replace')} />
-                  Replace — replace all bookmarks and settings
-                </label>
-              </fieldset>
-              <div className="settings-actions">
-                <button type="button" disabled={isBusy || !importMode} onClick={() => void generatePreview()}>
-                  {operation === 'previewing' ? 'Previewing…' : importPreview ? 'Preview again' : 'Preview'}
-                </button>
-                <button type="button" disabled={isBusy} onClick={cancelImport}>Cancel import</button>
-              </div>
-            </>
-          )}
-
-          {importPreview && (
-            <section className="settings-preview" aria-labelledby="import-preview-heading">
-              <h3 id="import-preview-heading">{importPreview.mode === 'merge' ? 'Merge preview' : 'Replace preview'}</h3>
-              {importPreview.mode === 'merge' ? (
-                <>
-                  <p>{importPreview.additions} bookmarks will be added; {importPreview.skippedDuplicates} duplicate bookmarks will be skipped.</p>
-                  <p className="help">Existing bookmarks win for the same video and second, including their name, color, and creation date. Current settings will be kept.</p>
-                </>
-              ) : (
-                <>
-                  <p>{importPreview.currentBookmarks} current bookmarks in {importPreview.currentVideos} videos will be replaced by {importPreview.incomingBookmarks} bookmarks in {importPreview.incomingVideos} videos.</p>
-                  <dl className="settings-changes">
-                    <div>
-                      <dt>Show player markers</dt>
-                      <dd>{importPreview.current.settings.showMarkers ? 'On' : 'Off'} → {importPreview.incoming.settings.showMarkers ? 'On' : 'Off'}</dd>
-                    </div>
-                    <div>
-                      <dt>Default marker color</dt>
-                      <dd>{importPreview.current.settings.defaultColor} → {importPreview.incoming.settings.defaultColor}</dd>
-                    </div>
-                  </dl>
-                  <label className="settings-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={hasAcknowledgedReplace}
-                      disabled={isBusy}
-                      onChange={(event) => setHasAcknowledgedReplace(event.target.checked)}
-                    />
-                    I understand that all current bookmarks and settings will be replaced. There is no undo.
-                  </label>
-                </>
+      {preferences && (
+        <>
+          <SettingGroup title="Appearance">
+            <SettingRow
+              label="Theme"
+              control={(
+                <ThemeChoice
+                  labelHidden
+                  value={preferences.theme}
+                  disabled={preferencesDisabled}
+                  pending={operation === 'saving'}
+                  onChange={(theme) => void savePreferences({ ...preferences, theme })}
+                />
               )}
-              <div className="settings-actions">
-                <button type="button" disabled={isBusy} onClick={cancelImport}>Cancel</button>
-                <button
-                  type="button"
-                  className={importPreview.mode === 'replace' ? 'destructive' : undefined}
-                  disabled={isBusy || (importPreview.mode === 'replace' && !hasAcknowledgedReplace)}
-                  onClick={() => void confirmImport()}
-                >
-                  {operation === 'importing' ? 'Importing…' : importPreview.mode === 'merge' ? 'Confirm merge' : 'Replace all bookmarks and settings'}
-                </button>
-              </div>
-            </section>
+            />
+          </SettingGroup>
+
+          <SettingGroup title="Playback">
+            <SettingRow
+              label="Show player markers"
+              control={(
+                <Switch
+                  label="Show player markers"
+                  labelHidden
+                  checked={preferences.showMarkers}
+                  disabled={preferencesDisabled}
+                  pending={operation === 'saving'}
+                  onChange={(showMarkers) => void savePreferences({ ...preferences, showMarkers })}
+                />
+              )}
+            />
+            <SettingRow
+              label="Default marker color"
+              control={(
+                <ColorPicker
+                  key={saveError ?? 'saved-color'}
+                  label="Default marker color"
+                  labelHidden
+                  value={preferences.defaultColor}
+                  defaultChoice={preferences.defaultColor}
+                  disabled={preferencesDisabled}
+                  onChange={(defaultColor) => {
+                    if (defaultColor) void savePreferences({ ...preferences, defaultColor });
+                  }}
+                />
+              )}
+            />
+          </SettingGroup>
+        </>
+      )}
+      {operation === 'saving' && <p role="status">Saving preferences…</p>}
+      {saveError && <Notice variant="error">{saveError} The controls show the last saved values.</Notice>}
+
+      <SettingGroup title="Backup">
+        <SettingRow
+          label="Export bookmarks"
+          help="Download the entire library and settings as JSON."
+          control={(
+            <Button disabled={isBusy} pending={operation === 'exporting'} onClick={() => void exportLibrary()}>
+              <Icon name="download" /> Export JSON
+            </Button>
           )}
-          {operation === 'previewing' && <p role="status">Reading current data and preparing the effect preview…</p>}
-          {operation === 'importing' && <p role="status">Saving imported bookmarks and settings…</p>}
-          {importError && <p className="error" role="alert">{importError}</p>}
-          {importFeedback && <p role="status">{importFeedback}</p>}
-        </div>
-      </section>
+        />
+        <SettingRow
+          label="Import bookmarks"
+          help="Review a JSON backup before merging or replacing saved data."
+          control={(
+            <Button disabled={isBusy} onClick={() => fileInputRef.current?.click()}>
+              <Icon name="upload" /> Import JSON
+            </Button>
+          )}
+        />
+        <label className="settings-file">
+          <span className="yb-sr-only">Choose JSON backup file</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            disabled={isBusy}
+            onChange={(event) => void selectImportFile(event.target.files?.[0])}
+          />
+        </label>
+      </SettingGroup>
+      {operation === 'exporting' && <p role="status">Waiting for the backup download to finish…</p>}
+      {exportError && <Notice variant="error">{exportError}</Notice>}
+      {operation === 'reading-file' && <p role="status">Reading and validating the backup…</p>}
+      {importError && !incomingBackup && (
+        <Notice variant="error" action={<Button variant="quiet" disabled={isBusy} onClick={cancelImport}>Dismiss</Button>}>
+          {importError}
+        </Notice>
+      )}
+
+      {incomingBackup && (
+        <ImportPreview
+          open
+          fileName={selectedFilename ?? 'JSON backup'}
+          mode={importMode}
+          onModeChange={(mode) => void generatePreview(mode)}
+          current={{ videos: importPreview?.currentVideos ?? 0, bookmarks: importPreview?.currentBookmarks ?? 0 }}
+          incoming={{ videos: importPreview?.incomingVideos ?? 0, bookmarks: importPreview?.incomingBookmarks ?? 0 }}
+          additions={importPreview?.additions ?? 0}
+          duplicates={importPreview?.skippedDuplicates ?? 0}
+          settingsChanges={settingsChanges}
+          acknowledged={hasAcknowledgedReplace}
+          onAcknowledgedChange={setHasAcknowledgedReplace}
+          previewReady={importPreview !== null && importPreview.mode === importMode}
+          previewPending={operation === 'previewing'}
+          pending={operation === 'importing'}
+          error={importError ?? undefined}
+          onRefresh={() => void generatePreview()}
+          onConfirm={() => void confirmImport()}
+          onClose={cancelImport}
+        />
+      )}
+      <Toast message={feedback} onDismiss={() => setFeedback(null)} />
     </div>
   );
+}
+
+function describeSettingsChanges(current: MarkerPreferences, incoming: MarkerPreferences): string[] {
+  const changes: string[] = [];
+  if (current.theme !== incoming.theme)
+    changes.push(`Theme: ${themeLabels[current.theme]} → ${themeLabels[incoming.theme]}`);
+  if (current.showMarkers !== incoming.showMarkers)
+    changes.push(`Show player markers: ${current.showMarkers ? 'On' : 'Off'} → ${incoming.showMarkers ? 'On' : 'Off'}`);
+  if (JSON.stringify(current.defaultColor) !== JSON.stringify(incoming.defaultColor))
+    changes.push(`Default marker color: ${describeColor(current.defaultColor)} → ${describeColor(incoming.defaultColor)}`);
+
+  return changes;
+}
+
+function describeColor(choice: ColorChoice): string {
+  if (choice.type === 'custom') return `Custom ${choice.value}`;
+
+  return choice.preset === 'accent' ? 'Accent' : choice.preset === 'gray' ? 'Gray' : 'Ink';
 }
 
 function downloadBackup(backup: Backup, filename: string, signal: AbortSignal): Promise<void> {

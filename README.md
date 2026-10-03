@@ -1,12 +1,12 @@
-# YouTube Timestamp Bookmarks
+# YouTube Bookmarks
 
-A personal Chrome extension for saving and revisiting moments in YouTube videos. Built with WXT and React. Player quick add, This video management, All videos browsing, and Settings with JSON backup/restore are implemented. Settings is complete following user review; All videos is awaiting user verification. Timeline-marker rendering remains planned.
+A personal Chrome extension for saving and revisiting moments in YouTube videos. Built with WXT and React. Player quick add, popup management/browsing, persisted appearance/color preferences, and compatible JSON backup/restore are implemented. The user has approved the design-system implementation; detailed exercised evidence and remaining behavioral verification are recorded in issue 2. Timeline-marker rendering remains planned.
 
 The agreed product behavior and boundaries live in [the project scope](docs/scope.md).
 
 ## Design-system components
 
-The [YouTube Bookmarks design system](.scratch/design-system/spec.md) has shared native React TSX components and an interactive development gallery, implemented in [issue 1](.scratch/design-system/issues/01-create-components.md). Each component lives in its own `ui/components/*.tsx` file; CSS lives in `ui/styles/` (including `foundations.css`), and supporting TypeScript lives in `ui/utils/`. Public exports stay in `ui/index.ts`; consumers import from `@/ui` and render inside `ThemeProvider`. Internal UI files use direct relative imports rather than their own barrel. Components receive state/callbacks and do not access extension services. [Issue 2](.scratch/design-system/issues/02-use-components-in-app.md) still owns popup adoption, persistence, and removal of the temporary gallery link. The usage below describes the existing POC. Quick add remains unchanged.
+The [YouTube Bookmarks design system](.scratch/design-system/spec.md) supplies the actual popup. Each component lives in its own `ui/components/*.tsx` file; CSS lives in `ui/styles/`, and supporting TypeScript lives in `ui/utils/`. Public exports stay in `ui/index.ts`; consumers import from `@/ui` and render inside the shared `ThemeProvider`. Components receive state/callbacks and do not access extension services. Domain appearance choices live in `models/appearance.ts`; popup controllers and background operations retain their existing responsibilities. [Issue 2](.scratch/design-system/issues/02-use-components-in-app.md) records the cutover and verification handoff. Quick add remains unchanged.
 
 Shared icons use the official [Tabler React library](https://docs.tabler.io/icons/libraries/react), outline variants only, through `ui/components/Icon.tsx`. Icons supplement action labels; compact video-group counts retain full accessible text.
 
@@ -16,38 +16,36 @@ On a standard YouTube watch page, click the **+** control in the player toolbar.
 
 ## Popup navigation
 
-Open the extension from the browser toolbar. A supported standard YouTube watch page opens **This video**, even without bookmarks; other pages open **All videos**. The persistent header keeps **All videos** and **Settings** reachable and offers **This video** only while the active player is supported. Outside YouTube, a notice leaves navigation available. Context-read failures show an error rather than a supported-video shortcut.
+Open the extension from the browser toolbar. A supported standard YouTube watch page opens **This video**, even without bookmarks; other pages open **All videos**. The persistent header keeps **All videos** and **Settings** reachable and offers **This video** only while the active player is supported. Outside YouTube, navigation remains available without an informational banner. If the tab context cannot be read, a concise notice offers a **YouTube** link opening in a new tab.
 
-This video lists saved moments chronologically. Click a timestamp to seek; use its Actions menu to edit, copy a timestamped link, or confirm deletion. The editor saves name, a native-picker color/default inheritance, and timestamp together; −5/−1/+1/+5-second buttons adjust a draft within the active player's duration. Use default removes a custom color override. Cancel discards the draft, and collisions or failed saves retain it. Delete all bookmarks confirms the video identity and count.
+This video lists saved moments chronologically, displaying **Unnamed bookmark** when no name is saved. Click a timestamp to seek; use its Actions menu to edit, copy a timestamped link, or confirm deletion. The editor saves name, color choice/default inheritance, and timestamp together; −5/−1/+1/+5-second buttons adjust a draft within the active player's duration. Use default removes any color override. Cancel discards the draft, and collisions or failed saves retain it. Video-level deletion is available only in All videos.
 
-All videos lists saved titles and counts, expands into chronological moments, and filters by partial video title. Titles open a watch page; timestamps seek the active video or open that moment in a new tab. Its only management action is confirmed deletion of all bookmarks for a selected video. The compact popup follows the system light/dark theme.
+All videos lists saved titles and counts and filters by partial video title only. Each group header expands its chronological moments independently; **Go to video** opens the watch page, while timestamps seek the active video or open that moment in a new tab. **Delete video** confirms the saved-data identity and count and does not affect the YouTube source. The popup requests 560 × 600 px to respect Chromium's toolbar-popup height limit, with persistent navigation and a primary content scroller.
 
 ## Settings and backups
 
-Settings saves marker visibility and default color immediately, reporting persistence failures. Default-color changes affect only bookmarks without a custom override. Visibility does not disable quick add or browsing; timeline-marker rendering remains a separate planned feature.
+Settings groups **Appearance**, **Playback**, and **Backup**. Light/Dark/System, marker visibility, and default color persist immediately through the background boundary; failures do not claim success. Accent/Gray/Ink follow the selected theme, while Custom retains a fixed native-picker hex color. Default-color changes affect only bookmarks without an override. Existing saved hex colors migrate to Custom without changing their values or bookmark metadata. Missing theme means System; fresh installations default to Accent. Visibility does not disable quick add or browsing; timeline-marker rendering remains separate.
 
 **Export JSON backup** downloads the entire library and settings, independent of the active video or title filter. To restore, choose a backup file, select **Merge** or **Replace**, inspect the preview, and confirm. Merge adds new video/second identities while keeping existing bookmarks and current settings. Replace overwrites all bookmarks and settings, including when importing an empty library, and requires destructive acknowledgement. Cancel and invalid files leave data unchanged. If the library changes after preview, generate a new preview before confirming.
 
-The versioned format is documented in the [popup specification](.scratch/popup-ui/spec.md#backup-format-and-persistence). See the [Settings issue](.scratch/popup-ui/issues/04-settings-page.md#implementation-and-verification) for implementation and smoke evidence.
+Exports use backup version 2, including theme and semantic color choices under the unchanged `youtube-timestamp-bookmarks` identifier. Strict version-1 imports remain supported: their hex colors become Custom and Replace selects System. The complete schema and operation/regression contracts are documented in the [popup specification](.scratch/popup-ui/spec.md#backup-format-and-persistence).
 
 ## Develop locally
 
 Requires Node.js and npm. From the repository root:
 
 ```sh
-npm ci
+npm ci --include=optional
 npm run dev
 ```
 
 For a production build, run `npm run compile` and `npm run build`. In Chrome, open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `.output/chrome-mv3/`. The development build lives in `.output/chrome-mv3-dev/`; reload the extension when needed.
 
-### Inspect components
+Build tooling requires platform-specific optional native packages (including Lightning CSS). Keep them enabled and retain the committed lockfile. On Windows, stop running development/build processes before reinstalling dependencies to avoid locked `.node` binaries. A missing Lightning CSS native-binding error is an installation problem, not invalid popup CSS; reinstall with `npm ci --include=optional` rather than disabling CSS minification.
 
-With `npm run dev` running and `.output/chrome-mv3-dev/` loaded, open the popup and click the temporary **Components** link. It opens the separate extension-owned gallery tab, not a fourth popup page. Its direct URL is `chrome-extension://<development-extension-id>/components.html`; obtain the ID from `chrome://extensions`. This URL remains usable after issue 2 removes the link.
+### Inspect the popup
 
-The gallery offers System/Light/Dark, Reset examples, constrained height, long text, many rows, and named interactive examples. Fixtures in `development/components/` never read or write production data. Sample Save, delete, and import operate on local state; backup/copy/navigation examples label their fixture feedback instead of affecting external data. `ColorPicker` uses the native browser color input; automated input-event smoke does not prove the OS picker dialog.
-
-`wxt.config.ts` removes the components entrypoint before production imports/building. The popup link and its lazy-loaded local CSS are guarded by `import.meta.env.DEV`. `npm run build` and `npm run zip` exclude the gallery, fixtures, link, and link stylesheet. Light/dark screenshots and interaction evidence are linked in issue 1. A 560 × up-to-700 px preview is not evidence of a native browser popup's maximum height.
+Use the actual extension popup to inspect shared components and their Light/Dark/System appearance. The temporary components gallery, its fixtures, and its entrypoint have been removed after popup adoption; there is no `components.html` page in development or production. Earlier gallery evidence remains recorded in issue 1.
 
 After content-script changes, reload the extension and refresh open YouTube tabs so they use the latest injected code. This also applies when a content entrypoint is renamed.
 

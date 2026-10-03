@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 
-import { deleteBookmark, deleteVideoBookmarks, getVideo } from '@/services/bookmark-client';
-import { getMarkerPreferences, resolveBookmarkColor } from '@/services/marker-preferences';
+import { deleteBookmark, getVideo } from '@/services/bookmark-client';
+import { getMarkerPreferences } from '@/services/marker-preferences';
 import { getBookmarkUrl, seekBookmark } from '@/services/player-navigation';
 import { formatTimestamp } from '@/utils/bookmark-time';
 
@@ -11,7 +11,7 @@ import type { Bookmark, Video } from '@/models/bookmark';
 import type { MarkerPreferences } from '@/models/marker-preferences';
 
 import BookmarkEditor from '../components/BookmarkEditor';
-import PopupDialog from '../components/PopupDialog';
+import { BookmarkRow, ConfirmationDialog, EmptyState, ErrorState, Notice, Skeleton, Toast, VideoSummary } from '@/ui';
 
 interface ThisVideoPageProps {
   activeTabContext: ActiveTabContext;
@@ -27,8 +27,7 @@ interface SavedVideoState {
 
 type OpenDialog =
   | { type: 'edit'; videoId: string; tabId: number; bookmark: Bookmark; preferences: MarkerPreferences }
-  | { type: 'delete'; videoId: string; title: string; bookmark: Bookmark }
-  | { type: 'delete-all'; videoId: string; title: string; count: number };
+  | { type: 'delete'; videoId: string; title: string; bookmark: Bookmark };
 
 export default function ThisVideoPage({ activeTabContext }: ThisVideoPageProps) {
   const [savedState, setSavedState] = useState<SavedVideoState>({
@@ -175,11 +174,7 @@ export default function ThisVideoPage({ activeTabContext }: ThisVideoPageProps) 
     setDeleteError(null);
 
     try {
-      if (deletion.type === 'delete') {
-        await deleteBookmark(deletion.videoId, deletion.bookmark.timestamp);
-      } else {
-        await deleteVideoBookmarks(deletion.videoId);
-      }
+      await deleteBookmark(deletion.videoId, deletion.bookmark.timestamp);
 
       refreshSavedVideoAfterMutation(deletion.videoId);
 
@@ -189,7 +184,7 @@ export default function ThisVideoPage({ activeTabContext }: ThisVideoPageProps) 
         if (latestVideoIdRef.current === deletion.videoId) {
           setFeedback({
             error: false,
-            message: deletion.type === 'delete' ? 'Bookmark deleted.' : 'All bookmarks deleted.',
+            message: 'Bookmark deleted.',
           });
         }
       }
@@ -221,110 +216,49 @@ export default function ThisVideoPage({ activeTabContext }: ThisVideoPageProps) 
 
   return (
     <>
-      <h1 id="this-video-heading" aria-live="polite">This video</h1>
-      {videoId && <p className="video-title">{title}</p>}
-
-      {!videoId ? <p>This video is available on a supported YouTube watch page.</p> : (
+      {!videoId ? (
+        <Notice>This video is available on a supported YouTube watch page.</Notice>
+      ) : (
         <>
-          {(!hasCurrentRead || savedState.status === 'loading') && <p role="status">Loading saved bookmarks…</p>}
-
+          {(!hasCurrentRead || savedState.status === 'loading') && <Skeleton label="Loading saved bookmarks" />}
           {hasCurrentRead && savedState.status === 'error' && (
-            <div className="read-error">
-              <p className="error" role="alert">{savedState.error}</p>
-              <button type="button" onClick={() => setRetryId((currentId) => currentId + 1)}>Retry</button>
-            </div>
+            <ErrorState onRetry={() => setRetryId((currentId) => currentId + 1)}>
+              {savedState.error}
+            </ErrorState>
           )}
-
           {hasCurrentRead && preferences && (
             <>
+              <VideoSummary videoId={videoId} title={title || videoId} bookmarkCount={bookmarks.length} />
               {bookmarks.length === 0 && savedState.status === 'ready' ? (
-                <p>No bookmarks saved for this video yet. Use the <strong>+</strong> button in the YouTube player to save a moment.</p>
-              ) : bookmarks.length > 0 && (
-                <>
-                  <div className="bookmark-toolbar">
-                    <span>{bookmarks.length} {bookmarks.length === 1 ? 'bookmark' : 'bookmarks'}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDeleteError(null);
-                        setDialog({ type: 'delete-all', videoId, title: title || videoId, count: bookmarks.length });
+                <EmptyState title="No bookmarks yet">
+                  Use the <strong>+</strong> button in the YouTube player to save a moment.
+                </EmptyState>
+              ) : (
+                <div className="yb-bookmark-list">
+                  {bookmarks.map((bookmark) => (
+                    <BookmarkRow
+                      key={bookmark.timestamp}
+                      bookmark={{ ...bookmark, id: String(bookmark.timestamp) }}
+                      defaultChoice={preferences.defaultColor}
+                      onSeek={() => void playBookmark(bookmark)}
+                      onEdit={() => {
+                        if (activeTabContext.status === 'supported') {
+                          setDialog({ type: 'edit', videoId, tabId: activeTabContext.tabId, bookmark, preferences });
+                        }
                       }}
-                    >
-                      Delete all bookmarks
-                    </button>
-                  </div>
-
-                  <ul className="bookmark-list">
-                    {bookmarks.map((bookmark) => {
-                      const resolvedColor = resolveBookmarkColor(bookmark, preferences);
-                      const identity = `${formatTimestamp(bookmark.timestamp)}${bookmark.name ? ` — ${bookmark.name}` : ''}`;
-
-                      return (
-                        <li key={bookmark.timestamp} className="bookmark-row">
-                          <span
-                            className="color-swatch"
-                            style={{ backgroundColor: resolvedColor }}
-                            role="img"
-                            aria-label={`${resolvedColor}${bookmark.color ? '' : ' (default)'} marker`}
-                          />
-                          <button
-                            type="button"
-                            className="timestamp-link"
-                            aria-label={`Seek to ${formatTimestamp(bookmark.timestamp)}`}
-                            onClick={() => void playBookmark(bookmark)}
-                          >
-                            {formatTimestamp(bookmark.timestamp)}
-                          </button>
-                          <span className="bookmark-name">{bookmark.name}</span>
-
-                          <details className="row-actions">
-                            <summary aria-label={`Actions for ${identity}`}>Actions</summary>
-                            <div
-                              className="row-action-list"
-                              onClick={(event) => {
-                                if (!(event.target instanceof HTMLElement) || !event.target.closest('button')) return;
-
-                                const actionsElement = event.currentTarget.closest('details');
-                                actionsElement?.removeAttribute('open');
-                                actionsElement?.querySelector('summary')?.focus();
-                              }}
-                            >
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (activeTabContext.status === 'supported') {
-                                    setDialog({ type: 'edit', videoId, tabId: activeTabContext.tabId, bookmark, preferences });
-                                  }
-                                }}
-                              >
-                                Edit
-                              </button>
-                              <button type="button" onClick={() => void copyBookmarkLink(bookmark)}>Copy timestamped link</button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setDeleteError(null);
-                                  setDialog({ type: 'delete', videoId, title: title || videoId, bookmark });
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </details>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </>
+                      onCopy={() => void copyBookmarkLink(bookmark)}
+                      onDelete={() => {
+                        setDeleteError(null);
+                        setDialog({ type: 'delete', videoId, title: title || videoId, bookmark });
+                      }}
+                    />
+                  ))}
+                </div>
               )}
             </>
           )}
-
-          {feedback && (
-            <p className={feedback.error ? 'error' : 'feedback'} role={feedback.error ? 'alert' : 'status'}>
-              {feedback.message}
-            </p>
-          )}
+          {feedback?.error && <Notice variant="error">{feedback.message}</Notice>}
+          <Toast message={feedback && !feedback.error ? feedback.message : null} onDismiss={() => setFeedback(null)} />
         </>
       )}
 
@@ -345,42 +279,19 @@ export default function ThisVideoPage({ activeTabContext }: ThisVideoPageProps) 
         />
       )}
 
-      {dialog && dialog.type !== 'edit' && (
-        <PopupDialog
-          labelledBy="delete-bookmarks-heading"
-          busy={isDeleting}
-          onDismiss={() => setDialog(null)}
+      {dialog?.type === 'delete' && (
+        <ConfirmationDialog
+          open
+          title="Delete bookmark?"
+          pending={isDeleting}
+          error={deleteError ?? undefined}
+          onClose={() => setDialog(null)}
+          onConfirm={() => void confirmDeletion()}
+          confirmLabel="Delete bookmark"
         >
-          <h2 id="delete-bookmarks-heading">{dialog.type === 'delete' ? 'Delete bookmark?' : 'Delete all bookmarks?'}</h2>
-
-          {dialog.type === 'delete' ? (
-            <p>Delete <strong>{formatTimestamp(dialog.bookmark.timestamp)}{dialog.bookmark.name ? ` — ${dialog.bookmark.name}` : ''}</strong> from {dialog.title}?</p>
-          ) : (
-            <p>Delete all <strong>{dialog.count} {dialog.count === 1 ? 'bookmark' : 'bookmarks'}</strong> for <strong>{dialog.title}</strong>?</p>
-          )}
-
-          <p className="help">This cannot be undone.</p>
-          {deleteError && <p className="error" role="alert">{deleteError}</p>}
-
-          <div className="dialog-actions">
-            <button
-              type="button"
-              autoFocus
-              disabled={isDeleting}
-              onClick={() => setDialog(null)}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="destructive"
-              disabled={isDeleting}
-              onClick={() => void confirmDeletion()}
-            >
-              {isDeleting ? 'Deleting…' : 'Delete'}
-            </button>
-          </div>
-        </PopupDialog>
+          <p>Delete <strong>{formatTimestamp(dialog.bookmark.timestamp)} — {dialog.bookmark.name?.trim() || 'Unnamed bookmark'}</strong> from <strong>{dialog.title}</strong>?</p>
+          <p>This removes the saved bookmark only. The YouTube video is unaffected. This cannot be undone.</p>
+        </ConfirmationDialog>
       )}
     </>
   );

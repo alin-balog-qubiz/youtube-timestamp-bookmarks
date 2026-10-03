@@ -1,87 +1,18 @@
-:root {
-  font-family: system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-  color-scheme: light dark;
-  color: #202124;
-  background: #ffffff;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  --surface: #f3f4f6;
-  --border: #d1d5db;
-  --selected: #e2e8f0;
-  --focus: #2563eb;
-  --error: #b91c1c;
-  --link: #1d4ed8;
-  --dialog-background: #ffffff;
-  --swatch-border: #52525b;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  width: 400px;
+html,
+body,
+#root {
   margin: 0;
+  min-width: 0;
 }
 
-button,
-input {
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-
-button {
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface);
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-input {
-  cursor: text;
-}
-
-input[type='color'] {
-  cursor: pointer;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
+/* Keep document scrolling disabled; the content region owns scrolling. */
+html {
   overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
-button:focus-visible,
-input:focus-visible,
-summary:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f3f4f6;
-    background: #18181b;
-    --surface: #27272a;
-    --border: #52525b;
-    --selected: #3f3f46;
-    --focus: #93c5fd;
-    --error: #fca5a5;
-    --link: #93c5fd;
-    --dialog-background: #18181b;
-    --swatch-border: #d1d5db;
-  }
+/* Chromium toolbar popups cap height at 600px and force scrollbars above it. */
+body {
+  width: 560px;
+  height: 600px;
+  overflow: hidden;
 }

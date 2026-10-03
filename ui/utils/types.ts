@@ -1,9 +1,6 @@
-export type ThemePreference = 'light' | 'dark' | 'system';
-export type ResolvedTheme = 'light' | 'dark';
+import type { ColorChoice } from '@/models/appearance';
 
-export type ColorChoice =
-  | { type: 'preset'; preset: 'accent' | 'gray' | 'ink' }
-  | { type: 'custom'; value: string };
+export type { ColorChoice, ResolvedTheme, ThemePreference } from '@/models/appearance';
 
 export type BookmarkDraft = {
   name: string;

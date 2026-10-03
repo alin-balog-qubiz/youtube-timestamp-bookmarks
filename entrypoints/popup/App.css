@@ -1,426 +1,65 @@
 .popup {
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  min-height: 240px;
-  max-height: 560px;
+  min-width: 0;
+  overflow: hidden;
 }
 
-.popup-header {
-  flex-shrink: 0;
-  padding: 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-.product-name {
-  margin: 0 0 12px;
-  font-weight: 650;
-}
-
-nav {
-  display: flex;
-  gap: 8px;
-}
-
-nav button {
-  padding: 6px 10px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-}
-
-nav button:hover {
-  background: var(--surface);
-}
-
-nav button[aria-current='page'] {
-  border-color: var(--border);
-  background: var(--selected);
-  font-weight: 650;
-}
-
-main {
+.popup-content {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px;
-  overflow-wrap: anywhere;
+  scrollbar-gutter: stable;
 }
 
-h1 {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1.3;
+.popup-content > .yb-notice {
+  margin-bottom: 16px;
 }
 
-.notice {
-  margin: 0 0 16px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-}
-
-.error {
-  color: var(--error);
-}
-
-.video-title {
-  margin: 8px 0 0;
-}
-
-.bookmark-toolbar,
-.dialog-actions,
-.timestamp-steps {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.bookmark-toolbar {
-  justify-content: space-between;
-  margin: 16px 0 8px;
-  font-size: 12px;
-}
-
-.bookmark-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.bookmark-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.color-swatch {
-  display: inline-block;
-  flex-shrink: 0;
-  width: 12px;
-  height: 12px;
-  border: 1px solid var(--swatch-border);
-  border-radius: 50%;
-}
-
-.timestamp-link {
-  flex-shrink: 0;
-  padding: 2px;
-  border: 0;
-  background: transparent;
-  color: var(--link);
-  text-decoration: underline;
-  font-variant-numeric: tabular-nums;
-}
-
-.bookmark-name {
-  flex: 1;
+.popup-content [role='tabpanel'] {
   min-width: 0;
 }
 
-.row-actions {
-  position: relative;
-  flex-shrink: 0;
-  font-size: 12px;
+.popup-content [role='tabpanel']:focus-visible {
+  outline: 2px solid var(--yb-focus);
+  outline-offset: -2px;
 }
 
-.row-actions summary {
-  padding: 4px;
-  cursor: pointer;
-}
-
-.row-action-list {
-  position: absolute;
-  right: 0;
-  z-index: 1;
-  display: grid;
-  min-width: 180px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--dialog-background);
-  box-shadow: 0 4px 12px #0003;
-}
-
-.row-action-list button {
-  padding: 8px;
-  border: 0;
-  background: transparent;
-  text-align: left;
-}
-
-.row-action-list button:hover {
-  background: var(--surface);
-}
-
-.popup-dialog {
-  width: min(360px, calc(100vw - 24px));
-  max-height: calc(100vh - 24px);
-  overflow-y: auto;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--dialog-background);
-  color: inherit;
-  overflow-wrap: anywhere;
-}
-
-.popup-dialog::backdrop {
-  background: #0007;
-}
-
-.popup-dialog h2 {
-  margin: 0 0 12px;
-  font-size: 18px;
-}
-
-.editor-fields {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  min-width: 0;
-}
-
-.draft-timestamp {
-  margin: 0 0 8px;
-  font-size: 20px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-
-.timestamp-steps button {
-  flex: 1;
-}
-
-.help {
-  font-size: 12px;
-}
-
-.name-field {
-  display: grid;
-  gap: 4px;
-  margin: 12px 0;
-}
-
-.name-field input {
-  width: 100%;
-  min-width: 0;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--dialog-background);
-}
-
-.marker-color {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-}
-
-.color-picker {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-}
-
-.color-picker input {
-  width: 48px;
-  height: 32px;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--dialog-background);
-}
-
-.dialog-actions {
-  justify-content: flex-end;
-  margin-top: 16px;
-}
-
-.destructive {
-  color: var(--error);
-}
-
-.video-search {
-  display: grid;
-  gap: 4px;
-  margin: 16px 0;
-}
-
-.video-search-controls {
-  display: flex;
-  gap: 8px;
-}
-
-.video-search-controls input {
-  flex: 1;
-  min-width: 0;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--dialog-background);
-}
-
-.video-search-controls button {
-  flex-shrink: 0;
-}
-
-.video-list {
+.popup-content .yb-video-list {
   display: grid;
   gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  margin-top: 16px;
 }
 
-.saved-video {
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+.popup-content .yb-bookmark-list {
+  margin-top: 16px;
 }
 
-.saved-video-title {
-  font-weight: 650;
-}
-
-.saved-video .bookmark-toolbar {
-  margin-top: 8px;
-}
-
-.video-moments summary {
-  cursor: pointer;
-}
-
-.video-moments .bookmark-row:last-child {
-  border-bottom: 0;
-}
-
-.popup a {
-  color: var(--link);
-}
-
-.popup a:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
-.settings-page section {
-  margin-top: 20px;
-}
-
-.settings-page h2 {
-  margin: 0 0 12px;
-  font-size: 16px;
-}
-
-.settings-page h3 {
-  margin: 0 0 8px;
-  font-size: 14px;
-}
-
-.settings-page p {
-  margin: 8px 0;
-}
-
-.settings-fields {
+.popup-content .settings-file {
   display: grid;
-  gap: 10px;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.settings-checkbox {
-  display: flex;
-  align-items: flex-start;
   gap: 8px;
+  padding: 14px;
+  color: var(--yb-muted);
+  font-size: 12px;
 }
 
-.settings-checkbox input {
-  flex-shrink: 0;
-  margin: 4px 0 0;
-  cursor: pointer;
-}
-
-.settings-color {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.settings-color input {
-  width: 48px;
-  height: 32px;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--dialog-background);
-}
-
-.settings-page input:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.settings-import {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-}
-
-.settings-file {
-  display: grid;
-  gap: 6px;
-}
-
-.settings-file input {
+.popup-content .settings-file input {
   width: 100%;
   min-width: 0;
-  font-size: 12px;
+  color: var(--yb-fg);
 }
 
-.settings-import-modes {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-  margin: 12px 0;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-}
-
-.settings-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.settings-page .settings-preview {
-  margin-top: 16px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-}
-
-.settings-changes {
-  display: grid;
-  gap: 8px;
-  margin: 12px 0;
-  font-size: 12px;
-}
-
-.settings-changes dt {
-  font-weight: 650;
-}
-
-.settings-changes dd {
-  margin: 0;
+.popup-content .settings-file input::file-selector-button {
+  margin-right: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--yb-control-border);
+  border-radius: var(--yb-radius-control);
+  background: var(--yb-raised);
+  color: var(--yb-fg);
+  font: inherit;
+  cursor: pointer;
 }

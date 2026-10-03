@@ -16,6 +16,7 @@ export interface BookmarkEditorProps {
   onDraftChange: (draft: BookmarkDraft) => void;
   onSave: () => void;
   maxTimestamp: number | null;
+  originalTimestamp?: number;
   defaultChoice: ColorChoice;
   pending?: boolean;
   error?: string;
@@ -23,14 +24,14 @@ export interface BookmarkEditorProps {
 }
 
 export function BookmarkEditor({
-  open, onClose, draft, onDraftChange, onSave, maxTimestamp, defaultChoice,
+  open, onClose, draft, onDraftChange, onSave, maxTimestamp, originalTimestamp, defaultChoice,
   pending = false, error, contextError,
 }: BookmarkEditorProps) {
   const formId = useId();
   const blocked = pending || Boolean(contextError);
   const knownDuration = maxTimestamp !== null && Number.isFinite(maxTimestamp) && maxTimestamp >= 0;
   const timestampValid = Number.isSafeInteger(draft.timestamp) && draft.timestamp >= 0 &&
-    (!knownDuration || draft.timestamp <= Math.floor(maxTimestamp));
+    (draft.timestamp === originalTimestamp || !knownDuration || draft.timestamp <= Math.floor(maxTimestamp));
 
   function saveDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

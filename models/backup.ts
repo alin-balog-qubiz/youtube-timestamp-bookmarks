@@ -3,7 +3,7 @@ import type { MarkerPreferences } from '@/models/marker-preferences';
 
 export interface Backup {
   format: 'youtube-timestamp-bookmarks';
-  version: 1;
+  version: 2;
   videos: Video[];
   settings: MarkerPreferences;
 }

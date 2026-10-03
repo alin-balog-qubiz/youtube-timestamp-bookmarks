@@ -7,10 +7,10 @@ import {
   getVideo,
   updateBookmark,
 } from '@/services/bookmarks';
-import { isMarkerColor } from '@/services/marker-preferences';
 import { registerMessageHandlers } from '@/services/messages';
 import { getCurrentPage } from '@/utils/current-page';
 
+import { validateColorChoice } from '@/models/appearance';
 import type { BookmarkDraft } from '@/models/bookmark';
 import type {
   CreateBookmarkResponse,
@@ -86,10 +86,11 @@ function validateBookmarkDraft(value: unknown): BookmarkDraft {
   if (draft.name !== undefined && typeof draft.name !== 'string')
     throw new Error('Bookmark name must be text');
 
-  if (draft.color !== undefined && !isMarkerColor(draft.color))
-    throw new Error('Bookmark color must be a six-digit hex color (#rrggbb) or Use default');
+  const color = draft.color === undefined
+    ? undefined
+    : validateColorChoice(draft.color, 'Bookmark color');
 
-  return { timestamp: draft.timestamp, name: draft.name, color: draft.color };
+  return { timestamp: draft.timestamp, name: draft.name, color };
 }
 
 async function guardBookmarkUpdate(

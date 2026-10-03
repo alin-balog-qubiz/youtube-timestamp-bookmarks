@@ -5,20 +5,21 @@ import { IconButton } from './IconButton';
 
 export type SearchInputProps = {
   label: string;
+  labelHidden?: boolean;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
 };
 
-export function SearchInput({ label, value, onChange, placeholder, disabled }: SearchInputProps) {
+export function SearchInput({ label, labelHidden = false, value, onChange, placeholder, disabled }: SearchInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const inputId = useId();
 
   return (
     <div className="yb-field">
-      <label className="yb-field-label" htmlFor={inputId}>{label}</label>
+      <label className={`yb-field-label${labelHidden ? ' yb-sr-only' : ''}`} htmlFor={inputId}>{label}</label>
       <div className="yb-search">
         <Icon name="search" />
         <input

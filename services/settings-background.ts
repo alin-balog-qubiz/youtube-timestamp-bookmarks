@@ -1,6 +1,6 @@
 import { getBackup, importBackup, previewImport, validateBackup } from '@/services/backup';
 import {
-  getMarkerPreferences,
+  migrateStoredAppearance,
   updateMarkerPreferences,
   validateMarkerPreferences,
 } from '@/services/marker-preferences';
@@ -26,7 +26,7 @@ export function registerSettingsHandlers(): () => void {
 }
 
 async function handleGetSettings(): Promise<GetSettingsResponse> {
-  return { ok: true, value: await getMarkerPreferences() };
+  return { ok: true, value: await migrateStoredAppearance() };
 }
 
 async function handleUpdateSettings(message: unknown): Promise<UpdateSettingsResponse> {
