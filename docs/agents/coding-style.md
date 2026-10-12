@@ -7,12 +7,25 @@ General engineering guidance lives in the [coding-standards skill](../../.agents
 ## File ownership
 
 - Top-level `entrypoints/`: WXT registration, lifecycle wiring, and thin message dispatch. Keep player detection, feature UI behavior, and persistence operations in their owning modules.
-- `services/`: operation implementations and execution-context-specific messaging adapters. Importing a module determines where it executes; its directory does not.
-- `models/`: shared data and context shapes. Runtime request/response contracts follow the rule below.
-- `utils/`: context-independent rules, such as URL classification; keep browser subscriptions, player DOM access, and feature lifecycle state with their owners.
+- `services/background/`: background-owned bookmark and settings handlers.
+- `services/client/`: YouTube-facing player lifecycle, player message handlers, and quick-add UI.
+- `services/popup/`: active-tab discovery and player navigation requested by popup controllers.
+- `services/storage/`: bookmark persistence/serialization, preferences/normalization, and cohesive backup operations/validation. Existing popup reads remain direct; mutations and import/export coordination remain background-owned.
+- `services/messaging/`: context-local handler registration and neutral bookmark/settings request adapters used to reach the background.
+- `models/`: focused shared data/context contracts and domain validators. Module-owned types stay with their implementation; component props and page state stay local.
+- `utils/`: context-independent rules, such as URL classification; `ui/utils/` owns UI support. Keep browser subscriptions, player DOM access, and feature lifecycle state with their owners.
 - `entrypoints/popup/`: React composition, pages, UI components, and popup-local navigation/context state.
 
 Separate responsibilities by ownership, not by creating a file for each function or a component for each CSS class. Keep one owner for shared live state; consumers use that owner's operations rather than initialize parallel copies.
+
+### Service imports
+
+Outside `services/background/`, `services/client/`, or `services/popup/`, import their operations through the respective scoped `index.ts` barrel. Each barrel contains explicit named re-exports only; initialization and registration stay in the entrypoints. Inside those folders, import siblings directly, including player-owned types from `./player`.
+
+Storage and messaging consumers import leaves, for example `@/services/storage/bookmarks` or `@/services/messaging/bookmark-requests`. These capabilities have no barrel; there is no root services or models barrel. Preserve `ui/index.ts` and direct internal UI imports.
+
+Importing a module executes it in the caller's context, not in the context named by its directory. Background mutation queues are module-local: popup/content writes use request adapters rather than importing storage mutation operations. Keep shared backup validation and preference normalization with their storage implementations.
+
 
 ## Import ordering
 
@@ -93,7 +106,7 @@ Declare default-exported functions at their definition rather than adding an exp
 
 ## Execution-context names
 
-Use `client` for host-website-facing extension code: content scripts and their messaging adapters. Use background/storage names for extension-owned persistence and message handling. Popup code is extension UI, not host-website client code.
+Use `client` for YouTube-facing content code, not every caller outside background. Background-request adapters in `services/messaging/` use neutral request names because popup and content callers share them. Popup code is extension UI, not host-website client code.
 
 All of these execute on the user's PC. A content script runs alongside the host website in an isolated JavaScript context; it is not the website's own script. A shared module executes in whichever context imports and calls it, regardless of its filename.
 

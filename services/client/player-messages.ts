@@ -1,4 +1,4 @@
-import type { PlayerClient } from '@/services/player-client';
+import type { PlayerClient } from './player';
 
 import type { GetActiveVideoResponse, GetPlayerDurationResponse, SeekBookmarkResponse } from '@/models/messages';
 

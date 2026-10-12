@@ -6,8 +6,8 @@ import {
   deleteVideoBookmarks,
   getVideo,
   updateBookmark,
-} from '@/services/bookmarks';
-import { registerMessageHandlers } from '@/services/messages';
+} from '@/services/storage/bookmarks';
+import { registerMessageHandlers } from '@/services/messaging/register-handlers';
 import { getCurrentPage } from '@/utils/current-page';
 
 import { validateColorChoice } from '@/models/appearance';

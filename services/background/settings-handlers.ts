@@ -1,10 +1,10 @@
-import { getBackup, importBackup, previewImport, validateBackup } from '@/services/backup';
+import { getBackup, importBackup, previewImport, validateBackup } from '@/services/storage/backup';
 import {
   migrateStoredAppearance,
   updateMarkerPreferences,
   validateMarkerPreferences,
-} from '@/services/marker-preferences';
-import { registerMessageHandlers } from '@/services/messages';
+} from '@/services/storage/marker-preferences';
+import { registerMessageHandlers } from '@/services/messaging/register-handlers';
 
 import type { ImportMode } from '@/models/backup';
 import type {

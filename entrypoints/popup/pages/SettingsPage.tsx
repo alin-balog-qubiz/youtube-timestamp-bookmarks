@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 
-import { validateBackup } from '@/services/backup';
-import { getBackup, importBackup, previewImport, updateSettings } from '@/services/settings-client';
+import { validateBackup } from '@/services/storage/backup';
+import { getBackup, importBackup, previewImport, updateSettings } from '@/services/messaging/settings-requests';
 
 import type { ColorChoice, ThemePreference } from '@/models/appearance';
 import type { Backup, ImportMode, ImportPreview as ImportPreviewData } from '@/models/backup';

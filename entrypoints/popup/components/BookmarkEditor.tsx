@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { getActiveTabContext } from '@/services/active-tab';
-import { updateBookmark } from '@/services/bookmark-client';
-import { getPlayerDuration } from '@/services/player-navigation';
+import { getActiveTabContext, getPlayerDuration } from '@/services/popup';
+import { updateBookmark } from '@/services/messaging/bookmark-requests';
 import { canAdjustTimestamp } from '@/utils/bookmark-time';
 
 import type { ActiveTabContext } from '@/models/active-tab';

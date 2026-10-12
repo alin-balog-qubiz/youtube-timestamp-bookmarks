@@ -1,7 +1,7 @@
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 
-import { createBookmark } from '@/services/bookmark-client';
-import type { PlayerClient } from '@/services/player-client';
+import { createBookmark } from '@/services/messaging/bookmark-requests';
+import type { PlayerClient } from './player';
 
 const feedbackDurationMs = 2500;
 

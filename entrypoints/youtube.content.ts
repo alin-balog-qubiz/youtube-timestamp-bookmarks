@@ -1,9 +1,7 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
 
-import { createPlayerClient } from '@/services/player-client';
-import { initializeQuickAdd } from '@/services/quick-add-client';
-import { registerMessageHandlers } from '@/services/messages';
-import { getPlayerMessageHandlers } from '@/services/player-messages';
+import { createPlayerClient, initializeQuickAdd, getPlayerMessageHandlers } from '@/services/client';
+import { registerMessageHandlers } from '@/services/messaging/register-handlers';
 
 export default defineContentScript({
   matches: ['*://*.youtube.com/*'],

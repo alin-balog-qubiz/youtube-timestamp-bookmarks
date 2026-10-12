@@ -5,14 +5,14 @@ import {
   normalizeStoredVideo,
   serializeLibraryMutation,
   videoStoragePrefix,
-} from '@/services/bookmarks';
+} from '@/services/storage/bookmarks';
 import {
   defaultMarkerPreferences,
   markerPreferencesStorageKey,
   normalizeStoredMarkerPreferences,
   validateLegacyMarkerPreferences,
   validateMarkerPreferences,
-} from '@/services/marker-preferences';
+} from '@/services/storage/marker-preferences';
 
 import { validateColorChoice, validateLegacyColor } from '@/models/appearance';
 import type { Backup, ImportMode, ImportPreview } from '@/models/backup';

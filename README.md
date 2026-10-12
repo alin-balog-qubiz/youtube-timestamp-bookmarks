@@ -30,6 +30,16 @@ Settings groups **Appearance**, **Playback**, and **Backup**. Light/Dark/System,
 
 Exports use backup version 2, including theme and semantic color choices under the unchanged `youtube-timestamp-bookmarks` identifier. Strict version-1 imports remain supported: their hex colors become Custom and Replace selects System. The complete schema and operation/regression contracts are documented in the [popup specification](.scratch/popup-ui/spec.md#backup-format-and-persistence).
 
+## Service navigation
+
+- `services/background/`: bookmark/settings handler registration, called explicitly by the background entrypoint.
+- `services/client/`: the shared YouTube player lifecycle, player message handlers, and quick add.
+- `services/popup/`: active-tab discovery and bookmark/player navigation.
+- `services/storage/`: bookmarks and mutation queues, preferences, and backup validation/import/export.
+- `services/messaging/`: context-local message registration and bookmark/settings requests to the background.
+
+External callers use the background/client/popup scoped barrels; storage and messaging use direct leaf imports. Internal siblings stay direct. Folder names describe ownership, not an execution switch: popup reads remain direct, while writes and backup coordination remain background-owned through request adapters. See [coding conventions](docs/agents/coding-style.md#service-imports) for import and type ownership.
+
 ## Develop locally
 
 Requires Node.js and npm. From the repository root:

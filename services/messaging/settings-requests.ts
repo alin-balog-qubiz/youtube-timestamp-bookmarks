@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 
-import { normalizeStoredMarkerPreferences } from '@/services/marker-preferences';
+import { normalizeStoredMarkerPreferences } from '@/services/storage/marker-preferences';
 
 import type { Backup, ImportMode, ImportPreview } from '@/models/backup';
 import type { MarkerPreferences } from '@/models/marker-preferences';

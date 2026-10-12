@@ -4,7 +4,7 @@ import {
   normalizeStoredVideo,
   serializeLibraryMutation,
   videoStoragePrefix,
-} from '@/services/bookmarks';
+} from '@/services/storage/bookmarks';
 
 import {
   validateColorChoice,

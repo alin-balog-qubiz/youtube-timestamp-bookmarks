@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 
-import { getActiveTabContext } from '@/services/active-tab';
-import { getSettings } from '@/services/settings-client';
+import { getActiveTabContext } from '@/services/popup';
+import { getSettings } from '@/services/messaging/settings-requests';
 
 import type { ActiveTabContext } from '@/models/active-tab';
 import type { MarkerPreferences } from '@/models/marker-preferences';

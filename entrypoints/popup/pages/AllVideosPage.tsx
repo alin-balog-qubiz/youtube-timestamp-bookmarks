@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 
-import { deleteVideoBookmarks } from '@/services/bookmark-client';
-import { listVideos } from '@/services/bookmarks';
-import { getMarkerPreferences } from '@/services/marker-preferences';
-import { openBookmark } from '@/services/player-navigation';
+import { deleteVideoBookmarks } from '@/services/messaging/bookmark-requests';
+import { listVideos } from '@/services/storage/bookmarks';
+import { getMarkerPreferences } from '@/services/storage/marker-preferences';
+import { openBookmark } from '@/services/popup';
 
 import type { ActiveTabContext } from '@/models/active-tab';
 import type { Video } from '@/models/bookmark';

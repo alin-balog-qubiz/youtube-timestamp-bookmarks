@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 
-import { deleteBookmark, getVideo } from '@/services/bookmark-client';
-import { getMarkerPreferences } from '@/services/marker-preferences';
-import { getBookmarkUrl, seekBookmark } from '@/services/player-navigation';
+import { deleteBookmark, getVideo } from '@/services/messaging/bookmark-requests';
+import { getMarkerPreferences } from '@/services/storage/marker-preferences';
+import { getBookmarkUrl, seekBookmark } from '@/services/popup';
 import { formatTimestamp } from '@/utils/bookmark-time';
 
 import type { ActiveTabContext } from '@/models/active-tab';

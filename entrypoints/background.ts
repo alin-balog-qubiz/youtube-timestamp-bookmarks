@@ -1,7 +1,6 @@
 import { defineBackground } from 'wxt/utils/define-background';
 
-import { registerBookmarkHandlers } from '@/services/bookmark-background';
-import { registerSettingsHandlers } from '@/services/settings-background';
+import { registerBookmarkHandlers, registerSettingsHandlers } from '@/services/background';
 
 export default defineBackground(() => {
   registerBookmarkHandlers();

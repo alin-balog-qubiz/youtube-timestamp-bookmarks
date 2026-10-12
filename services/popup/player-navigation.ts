@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 
-import { getActiveTabContext } from '@/services/active-tab';
+import { getActiveTabContext } from './active-tab';
 
 import type { GetPlayerDurationRequest, GetPlayerDurationResponse, SeekBookmarkRequest, SeekBookmarkResponse } from '@/models/messages';
 
