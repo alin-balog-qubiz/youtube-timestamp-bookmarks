@@ -1,6 +1,11 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
 
-import { createPlayerClient, initializeQuickAdd, getPlayerMessageHandlers } from '@/services/client';
+import {
+  createPlayerClient,
+  getPlayerMessageHandlers,
+  initializePlayerMarkers,
+  initializeQuickAdd,
+} from '@/services/client';
 import { registerMessageHandlers } from '@/services/messaging/register-handlers';
 
 export default defineContentScript({
@@ -12,5 +17,6 @@ export default defineContentScript({
 
     ctx.onInvalidated(removeListener);
     initializeQuickAdd(ctx, playerClient);
+    initializePlayerMarkers(ctx, playerClient);
   },
 });

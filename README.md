@@ -1,6 +1,6 @@
 # YouTube Bookmarks
 
-A personal Chrome extension for saving and revisiting moments in YouTube videos. Built with WXT and React. Player quick add, popup management/browsing, persisted appearance/color preferences, and compatible JSON backup/restore are implemented. The user has approved the design-system implementation; detailed exercised evidence and remaining behavioral verification are recorded in issue 2. Timeline-marker rendering remains planned.
+A personal Chrome extension for saving and revisiting moments in YouTube videos. Built with WXT and React. Player quick add and timeline markers, popup management/browsing, persisted appearance/color preferences, and compatible JSON backup/restore are implemented. The user has approved the design-system implementation; detailed exercised evidence and remaining behavioral verification are recorded in issue 2. [Player-marker verification](.scratch/player-markers/issues/01-implement-player-markers.md) records local checks and the user-owned YouTube smoke test.
 
 The agreed product behavior and boundaries live in [the project scope](docs/scope.md).
 
@@ -12,7 +12,9 @@ Shared icons use the official [Tabler React library](https://docs.tabler.io/icon
 
 ## Save a moment
 
-On a standard YouTube watch page, click the **+** control in the player toolbar. The current whole-second position is saved locally without interrupting playback. **Saved** confirms a new bookmark; **Already saved** means that video's second was previously saved. Bookmarks remain in extension storage after reload. Timeline markers are not available yet.
+On a standard YouTube watch page, click the **+** control in the player toolbar. The current whole-second position is saved locally without interrupting playback. **Saved** confirms a new bookmark; **Already saved** means that video's second was previously saved. Bookmarks remain in extension storage after reload.
+
+Saved moments appear as small colored markers centered on the progress bar once the player has a usable duration. Hover or focus a marker to see its timestamp and optional name, separated by a space, in a rounded translucent dark tooltip styled like YouTube's controls tooltips; click it or press Enter/Space to seek within the current video. Ordinary timeline input stays available outside markers. Markers update from persisted bookmark/settings changes, follow the selected appearance and color inheritance, and stay aligned as the player resizes. Out-of-range timestamps remain stored but are not rendered; overlapping markers remain individually selectable through the popup.
 
 ## Popup navigation
 
@@ -24,7 +26,7 @@ All videos lists saved titles and counts and filters by partial video title only
 
 ## Settings and backups
 
-Settings groups **Appearance**, **Playback**, and **Backup**. Light/Dark/System, marker visibility, and default color persist immediately through the background boundary; failures do not claim success. Accent/Gray/Ink follow the selected theme, while Custom retains a fixed native-picker hex color. Default-color changes affect only bookmarks without an override. Existing saved hex colors migrate to Custom without changing their values or bookmark metadata. Missing theme means System; fresh installations default to Accent. Visibility does not disable quick add or browsing; timeline-marker rendering remains separate.
+Settings groups **Appearance**, **Playback**, and **Backup**. Light/Dark/System, marker visibility, and default color persist immediately through the background boundary; failures do not claim success. Accent/Gray/Ink follow the selected theme, while Custom retains a fixed native-picker hex color. Default-color changes affect only bookmarks without an override. Existing saved hex colors migrate to Custom without changing their values or bookmark metadata. Missing theme means System; fresh installations default to Accent. Visibility hides/restores player markers without disabling quick add or browsing.
 
 **Export JSON backup** downloads the entire library and settings, independent of the active video or title filter. To restore, choose a backup file, select **Merge** or **Replace**, inspect the preview, and confirm. Merge adds new video/second identities while keeping existing bookmarks and current settings. Replace overwrites all bookmarks and settings, including when importing an empty library, and requires destructive acknowledgement. Cancel and invalid files leave data unchanged. If the library changes after preview, generate a new preview before confirming.
 
@@ -33,7 +35,7 @@ Exports use backup version 2, including theme and semantic color choices under t
 ## Service navigation
 
 - `services/background/`: bookmark/settings handler registration, called explicitly by the background entrypoint.
-- `services/client/`: the shared YouTube player lifecycle, player message handlers, and quick add.
+- `services/client/`: the shared YouTube player lifecycle, player message handlers, quick add, and player markers.
 - `services/popup/`: active-tab discovery and bookmark/player navigation.
 - `services/storage/`: bookmarks and mutation queues, preferences, and backup validation/import/export.
 - `services/messaging/`: context-local message registration and bookmark/settings requests to the background.

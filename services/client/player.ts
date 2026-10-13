@@ -18,6 +18,7 @@ export type PlayerContext =
     watch: Element;
     player: YoutubePlayer;
     controls: HTMLElement;
+    progressBar: HTMLElement | null;
     video: HTMLVideoElement;
   };
 
@@ -38,11 +39,26 @@ export function createPlayerClient(ctx: ContentScriptContext): PlayerClient {
   let departingVideoId: string | undefined;
   let newMediaLoaded = false;
 
+  let observedContext = getPlayerContext();
+  let reconcileFrame: number | undefined;
+  const observer = new MutationObserver(handlePlayerMutations);
+  observer.observe(document, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['video-id', 'is-live', 'is-live-now', 'class'],
+  });
   ctx.addEventListener(window, 'wxt:locationchange', handleLocationChange);
   ctx.addEventListener(document, 'yt-navigate-start', handleNavigationStart);
   ctx.addEventListener(document, 'yt-navigate-finish', handleNavigationFinish);
   ctx.addEventListener(document, 'loadedmetadata', handleLoadedMetadata, true);
-  ctx.onInvalidated(() => changeListeners.clear());
+  ctx.addEventListener(document, 'durationchange', notifyChange, true);
+  ctx.addEventListener(document, 'emptied', notifyChange, true);
+  ctx.onInvalidated(() => {
+    observer.disconnect();
+    if (reconcileFrame !== undefined) cancelAnimationFrame(reconcileFrame);
+    changeListeners.clear();
+  });
 
   return { getPlayerContext, getActiveVideo, getPlayerDuration, seekBookmark, onChange };
 
@@ -63,6 +79,7 @@ export function createPlayerClient(ctx: ContentScriptContext): PlayerClient {
       watch: elements.watch,
       player: elements.player,
       controls: elements.controls,
+      progressBar: elements.player.querySelector<HTMLElement>('.ytp-progress-bar'),
       video: elements.video,
     };
   }
@@ -129,7 +146,23 @@ export function createPlayerClient(ctx: ContentScriptContext): PlayerClient {
     notifyChange();
   }
 
+  function handlePlayerMutations(records: MutationRecord[]) {
+    if (!records.some((record) =>
+      record.type === 'childList' ||
+      (record.target instanceof Element &&
+        record.target.matches('ytd-watch-flexy, #movie_player')),
+    ) || reconcileFrame !== undefined) return;
+
+    reconcileFrame = requestAnimationFrame(() => {
+      reconcileFrame = undefined;
+      const currentContext = getPlayerContext();
+      if (!samePlayerContext(observedContext, currentContext))
+        notifyChange();
+    });
+  }
+
   function notifyChange() {
+    observedContext = getPlayerContext();
     for (const listener of changeListeners) listener();
   }
 
@@ -161,6 +194,19 @@ export function createPlayerClient(ctx: ContentScriptContext): PlayerClient {
 
     return playerContext;
   }
+}
+
+function samePlayerContext(previous: PlayerContext, current: PlayerContext): boolean {
+  if (previous.status !== 'supported' || current.status !== 'supported')
+    return previous.status === current.status;
+
+  return previous.videoId === current.videoId &&
+    previous.title === current.title &&
+    previous.watch === current.watch &&
+    previous.player === current.player &&
+    previous.controls === current.controls &&
+    previous.progressBar === current.progressBar &&
+    previous.video === current.video;
 }
 
 function getWatchVideoId(): string | null {
