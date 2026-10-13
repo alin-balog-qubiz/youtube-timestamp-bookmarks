@@ -47,7 +47,9 @@ export default function SettingsPage({
   const operationRef = useRef<SettingsOperation | null>(null);
   const downloadControllerRef = useRef<AbortController | null>(null);
 
-  const persistence = useSettingsPersistence(preferences, onPreferencesChange);
+  const persistence = useSettingsPersistence(
+    preferences, onPreferencesChange, () => setFeedback('Default marker color saved.'),
+  );
   const isBusy = (!preferences && isReadingSettings) || operation !== null;
   const preferencesDisabled = isBusy || readError !== null;
   const colorDisabled = (!preferences && isReadingSettings) || readError !== null ||
@@ -322,7 +324,7 @@ export default function SettingsPage({
                     setFeedback(null);
                     persistence.selectColor(defaultColor, true);
                   }}
-                  onCommit={() => { void persistence.flushColor(); }}
+                  onCommit={() => { void persistence.commitColor(); }}
                 />
               )}
             />
@@ -331,9 +333,6 @@ export default function SettingsPage({
       )}
       {operation === 'saving' && <p role="status">Saving preferences…</p>}
       {saveError && <Notice variant="error">{saveError} Theme and visibility show their last saved values.</Notice>}
-      {persistence.colorStatus === 'pending' && <p role="status">Color preview — not saved yet.</p>}
-      {persistence.colorStatus === 'saving' && <p role="status">Saving default marker color…</p>}
-      {persistence.colorStatus === 'saved' && <p role="status">Default marker color saved.</p>}
       {persistence.colorError && (
         <Notice variant="error">{persistence.colorError} The color preview is not saved. Choose a color again to retry.</Notice>
       )}

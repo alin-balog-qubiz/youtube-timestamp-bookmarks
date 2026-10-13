@@ -13,9 +13,9 @@ type ColorIntent = { choice: ColorChoice; revision: number };
 export function useSettingsPersistence(
   preferences: MarkerPreferences | null,
   onPreferencesChange: (saved: MarkerPreferences) => void,
+  onColorSaved: () => void,
 ) {
   const [colorPreview, setColorPreview] = useState<ColorChoice | null>(null);
-  const [colorStatus, setColorStatus] = useState<'pending' | 'saving' | 'saved' | 'error' | null>(null);
   const [colorError, setColorError] = useState<string | null>(null);
 
   const savedPreferencesRef = useRef(preferences);
@@ -23,6 +23,9 @@ export function useSettingsPersistence(
   const queuedWritesRef = useRef(0);
   const pendingColorRef = useRef<ColorIntent | null>(null);
   const colorRevisionRef = useRef(0);
+  const savedColorRevisionRef = useRef<number | null>(null);
+  const toastColorRevisionRef = useRef<number | null>(null);
+  const notifiedColorRevisionRef = useRef<number | null>(null);
   const colorTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const colorErrorRef = useRef<string | null>(null);
   const isDisposedRef = useRef(false);
@@ -73,10 +76,10 @@ export function useSettingsPersistence(
     clearTimeout(colorTimerRef.current);
     const intent = { choice, revision: ++colorRevisionRef.current };
     pendingColorRef.current = intent;
+    toastColorRevisionRef.current = continuous ? null : intent.revision;
     colorErrorRef.current = null;
     setColorPreview(choice);
     setColorError(null);
-    setColorStatus('pending');
 
     if (continuous) {
       colorTimerRef.current = setTimeout(() => void savePendingColor(), customColorDelayMs);
@@ -91,14 +94,14 @@ export function useSettingsPersistence(
     if (!intent || isDisposedRef.current) return;
 
     pendingColorRef.current = null;
-    setColorStatus('saving');
     try {
       await savePreferences({ defaultColor: intent.choice }, intent);
       if (isDisposedRef.current || intent.revision !== colorRevisionRef.current) return;
 
       colorErrorRef.current = null;
       setColorError(null);
-      setColorStatus('saved');
+      savedColorRevisionRef.current = intent.revision;
+      notifyColorSaved();
       setColorPreview(null);
     } catch (failure) {
       if (isDisposedRef.current || intent.revision !== colorRevisionRef.current) return;
@@ -106,8 +109,23 @@ export function useSettingsPersistence(
       const message = failure instanceof Error ? failure.message : 'Unable to save the default marker color.';
       colorErrorRef.current = message;
       setColorError(message);
-      setColorStatus('error');
     }
+  }
+
+  function notifyColorSaved() {
+    const revision = toastColorRevisionRef.current;
+    if (isDisposedRef.current || revision === null || revision !== colorRevisionRef.current ||
+      revision !== savedColorRevisionRef.current || revision === notifiedColorRevisionRef.current) return;
+
+    notifiedColorRevisionRef.current = revision;
+    onColorSaved();
+  }
+
+  async function commitColor() {
+    if (colorRevisionRef.current === 0 || isDisposedRef.current) return;
+
+    toastColorRevisionRef.current = colorRevisionRef.current;
+    if (await flushColor()) notifyColorSaved();
   }
 
   // Called before navigation and backup snapshots, while Settings is still
@@ -126,15 +144,17 @@ export function useSettingsPersistence(
     clearTimeout(colorTimerRef.current);
     pendingColorRef.current = null;
     colorRevisionRef.current++;
+    savedColorRevisionRef.current = null;
+    toastColorRevisionRef.current = null;
+    notifiedColorRevisionRef.current = null;
     savedPreferencesRef.current = saved;
     colorErrorRef.current = null;
     setColorPreview(null);
-    setColorStatus(null);
     setColorError(null);
     onPreferencesChange(saved);
   }
 
-  return { colorPreview, colorStatus, colorError, selectColor, flushColor, savePreferences, adoptImportedPreferences };
+  return { colorPreview, colorError, selectColor, commitColor, flushColor, savePreferences, adoptImportedPreferences };
 }
 
 function colorsMatch(left: ColorChoice, right: ColorChoice): boolean {
