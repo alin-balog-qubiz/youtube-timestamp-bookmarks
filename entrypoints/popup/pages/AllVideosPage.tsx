@@ -230,7 +230,6 @@ export default function AllVideosPage({ activeTabContext }: AllVideosPageProps) 
           confirmLabel="Delete video"
         >
           <p>Delete <strong>{deletion.title}</strong> ({deletion.videoId}) and its <strong>{deletion.count} saved {deletion.count === 1 ? 'bookmark' : 'bookmarks'}</strong>?</p>
-          <p>Only this video's saved data is removed. The YouTube source is unaffected. This cannot be undone.</p>
         </ConfirmationDialog>
       )}
     </>

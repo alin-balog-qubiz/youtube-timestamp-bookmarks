@@ -290,7 +290,6 @@ export default function ThisVideoPage({ activeTabContext }: ThisVideoPageProps) 
           confirmLabel="Delete bookmark"
         >
           <p>Delete <strong>{formatTimestamp(dialog.bookmark.timestamp)} — {dialog.bookmark.name?.trim() || 'Unnamed bookmark'}</strong> from <strong>{dialog.title}</strong>?</p>
-          <p>This removes the saved bookmark only. The YouTube video is unaffected. This cannot be undone.</p>
         </ConfirmationDialog>
       )}
     </>
