@@ -36,7 +36,11 @@ The This video summary card starts with the video title and bookmark count; do n
 
 Color controls show preset swatches and the native Custom picker without a separate hex-code readout. Keep accessible labels and the editor's Use default inheritance.
 
+The [color wheel improvement](../.scratch/color-wheel-improvement/spec.md) is implemented locally, with user verification pending: Custom default-marker-color selection in Settings updates the picker locally and saves after a 1-second pause in continuous changes. Preset and remembered Custom selections remain immediate. Ordered writes preserve newer color, theme, and visibility choices. Native commit, leaving the picker, popup navigation, and backup snapshots flush pending color work; failures retain an explicitly unsaved preview rather than claiming success. Bookmark-editor colors remain draft-only until Save changes. Abrupt popup destruction before a commit/debounce boundary is not guaranteed to preserve an unsaved selection.
+
 Use Tabler's outline React icons for functional controls and feedback. Bookmark menu actions, video actions, backup buttons, and theme choices pair icons with text. All videos uses a compact bookmark icon/count with a full accessible label; This video keeps an icon plus bookmark-count text. Action menus retain crisp depth without blurred outer shadows or glow.
+
+Player-control polish is implemented locally, with user verification pending: quick add uses YouTube's control styling hook for alignment and an extension-owned rounded translucent pill shared with marker tooltips. Hover and keyboard focus reveal its label; save feedback temporarily occupies the same pill without shifting the control row. Shared styling increases contrast over bright content. See the [player-controls polish spec](../.scratch/player-controls-polish/spec.md).
 
 ## Boundaries and later ideas
 

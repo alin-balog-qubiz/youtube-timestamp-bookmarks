@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { browser } from 'wxt/browser';
 
 import { validateBackup } from '@/services/storage/backup';
-import { getBackup, importBackup, previewImport, updateSettings } from '@/services/messaging/settings-requests';
+import { getBackup, importBackup, previewImport } from '@/services/messaging/settings-requests';
+import { useSettingsPersistence } from '../hooks/useSettingsPersistence';
 
 import type { ColorChoice, ThemePreference } from '@/models/appearance';
 import type { Backup, ImportMode, ImportPreview as ImportPreviewData } from '@/models/backup';
@@ -15,17 +16,18 @@ import {
 
 type SettingsOperation = 'saving' | 'exporting' | 'reading-file' | 'previewing' | 'importing';
 type SettingsPageProps = {
-  preferences: MarkerPreferences | null;
-  isReadingSettings: boolean;
-  readError: string | null;
-  onRetry: () => void;
-  onPreferencesChange: (saved: MarkerPreferences) => void;
+  readonly preferences: MarkerPreferences | null;
+  readonly isReadingSettings: boolean;
+  readonly readError: string | null;
+  readonly onRetry: () => void;
+  readonly onPreferencesChange: (saved: MarkerPreferences) => void;
+  readonly beforeLeaveRef: RefObject<(() => Promise<boolean>) | null>;
 };
 
 const themeLabels: Record<ThemePreference, string> = { light: 'Light', dark: 'Dark', system: 'System' };
 
 export default function SettingsPage({
-  preferences, isReadingSettings, readError, onRetry, onPreferencesChange,
+  preferences, isReadingSettings, readError, onRetry, onPreferencesChange, beforeLeaveRef,
 }: SettingsPageProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -45,8 +47,11 @@ export default function SettingsPage({
   const operationRef = useRef<SettingsOperation | null>(null);
   const downloadControllerRef = useRef<AbortController | null>(null);
 
-  const isBusy = isReadingSettings || operation !== null;
+  const persistence = useSettingsPersistence(preferences, onPreferencesChange);
+  const isBusy = (!preferences && isReadingSettings) || operation !== null;
   const preferencesDisabled = isBusy || readError !== null;
+  const colorDisabled = (!preferences && isReadingSettings) || readError !== null ||
+    (operation !== null && operation !== 'saving');
 
   useEffect(() => {
     isDisposedRef.current = false;
@@ -58,7 +63,15 @@ export default function SettingsPage({
     };
   }, []);
 
-  async function savePreferences(nextPreferences: MarkerPreferences) {
+  useEffect(() => {
+    beforeLeaveRef.current = () => {
+      if (operationRef.current !== null && operationRef.current !== 'saving') return Promise.resolve(false);
+      return persistence.flushColor();
+    };
+    return () => { beforeLeaveRef.current = null; };
+  }, [beforeLeaveRef, persistence.flushColor]);
+
+  async function savePreferences(patch: Partial<MarkerPreferences>) {
     if (!preferences || readError) return;
 
     const operationId = beginOperation('saving');
@@ -69,11 +82,10 @@ export default function SettingsPage({
     setFeedback(null);
 
     try {
-      const savedPreferences = await updateSettings(nextPreferences);
+      await persistence.savePreferences(patch);
       if (!isCurrentOperation(operationId)) return;
 
-      onPreferencesChange(savedPreferences);
-      setFeedback('Preferences saved.');
+      setFeedback(patch.theme !== undefined ? 'Theme saved.' : 'Marker visibility saved.');
     } catch (failure) {
       if (isCurrentOperation(operationId)) {
         setSaveError(getErrorMessage(failure, 'Unable to save preferences.'));
@@ -91,6 +103,7 @@ export default function SettingsPage({
     setFeedback(null);
 
     try {
+      if (!await persistence.flushColor()) throw new Error('The selected color was not saved. Choose a color again before exporting.');
       const backup = await getBackup();
       if (!isCurrentOperation(operationId)) return;
 
@@ -120,6 +133,7 @@ export default function SettingsPage({
     setSelectedFilename(file.name);
 
     try {
+      if (!await persistence.flushColor()) throw new Error('The selected color was not saved. Choose a color again before importing.');
       const text = await file.text();
       if (!isCurrentOperation(operationId)) return;
 
@@ -151,6 +165,7 @@ export default function SettingsPage({
     setFeedback(null);
 
     try {
+      if (!await persistence.flushColor()) return;
       await readPreview(incomingBackup, mode, operationId);
     } finally {
       finishOperation(operationId);
@@ -181,10 +196,11 @@ export default function SettingsPage({
     setFeedback(null);
 
     try {
+      if (!await persistence.flushColor()) throw new Error('The selected color was not saved. Refresh the preview after choosing a color again.');
       const result = await importBackup(importPreview);
       if (!isCurrentOperation(operationId)) return;
 
-      onPreferencesChange(result.mode === 'replace' ? result.incoming.settings : result.current.settings);
+      persistence.adoptImportedPreferences(result.mode === 'replace' ? result.incoming.settings : result.current.settings);
       setSaveError(null);
       resetImport();
       setFeedback(result.mode === 'merge'
@@ -222,7 +238,7 @@ export default function SettingsPage({
   }
 
   function beginOperation(nextOperation: SettingsOperation): number | null {
-    if (isDisposedRef.current || isReadingSettings || operationRef.current !== null) return null;
+    if (isDisposedRef.current || (!preferences && isReadingSettings) || operationRef.current !== null) return null;
 
     const operationId = ++latestOperationIdRef.current;
     operationRef.current = nextOperation;
@@ -248,7 +264,7 @@ export default function SettingsPage({
   return (
     <div className="settings-page">
       <h1 id="page-heading" className="yb-sr-only">Settings</h1>
-      {isReadingSettings && <Skeleton rows={3} label="Loading preferences" />}
+      {isReadingSettings && !preferences && <Skeleton rows={3} label="Loading preferences" />}
       {readError && (
         <ErrorState title="Unable to load preferences" onRetry={onRetry} pending={isBusy}>
           {readError}
@@ -266,7 +282,7 @@ export default function SettingsPage({
                   value={preferences.theme}
                   disabled={preferencesDisabled}
                   pending={operation === 'saving'}
-                  onChange={(theme) => void savePreferences({ ...preferences, theme })}
+                  onChange={(theme) => void savePreferences({ theme })}
                 />
               )}
             />
@@ -282,7 +298,7 @@ export default function SettingsPage({
                   checked={preferences.showMarkers}
                   disabled={preferencesDisabled}
                   pending={operation === 'saving'}
-                  onChange={(showMarkers) => void savePreferences({ ...preferences, showMarkers })}
+                  onChange={(showMarkers) => void savePreferences({ showMarkers })}
                 />
               )}
             />
@@ -290,15 +306,23 @@ export default function SettingsPage({
               label="Default marker color"
               control={(
                 <ColorPicker
-                  key={saveError ?? 'saved-color'}
                   label="Default marker color"
                   labelHidden
-                  value={preferences.defaultColor}
+                  value={persistence.colorPreview ?? preferences.defaultColor}
                   defaultChoice={preferences.defaultColor}
-                  disabled={preferencesDisabled}
+                  disabled={colorDisabled}
                   onChange={(defaultColor) => {
-                    if (defaultColor) void savePreferences({ ...preferences, defaultColor });
+                    if (!defaultColor) return;
+                    clearPreview();
+                    setFeedback(null);
+                    persistence.selectColor(defaultColor);
                   }}
+                  onInput={(defaultColor) => {
+                    clearPreview();
+                    setFeedback(null);
+                    persistence.selectColor(defaultColor, true);
+                  }}
+                  onCommit={() => { void persistence.flushColor(); }}
                 />
               )}
             />
@@ -306,7 +330,13 @@ export default function SettingsPage({
         </>
       )}
       {operation === 'saving' && <p role="status">Saving preferences…</p>}
-      {saveError && <Notice variant="error">{saveError} The controls show the last saved values.</Notice>}
+      {saveError && <Notice variant="error">{saveError} Theme and visibility show their last saved values.</Notice>}
+      {persistence.colorStatus === 'pending' && <p role="status">Color preview — not saved yet.</p>}
+      {persistence.colorStatus === 'saving' && <p role="status">Saving default marker color…</p>}
+      {persistence.colorStatus === 'saved' && <p role="status">Default marker color saved.</p>}
+      {persistence.colorError && (
+        <Notice variant="error">{persistence.colorError} The color preview is not saved. Choose a color again to retry.</Notice>
+      )}
 
       <SettingGroup title="Backup">
         <SettingRow

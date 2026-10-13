@@ -15,6 +15,7 @@ General engineering guidance lives in the [coding-standards skill](../../.agents
 - `models/`: focused shared data/context contracts and domain validators. Module-owned types stay with their implementation; component props and page state stay local.
 - `utils/`: context-independent rules, such as URL classification; `ui/utils/` owns UI support. Keep browser subscriptions, player DOM access, and feature lifecycle state with their owners.
 - `entrypoints/popup/`: React composition, pages, UI components, and popup-local navigation/context state.
+- `entrypoints/popup/hooks/`: extracted popup-specific React hooks, using `usePascalCase.ts` filenames and direct imports. Keep hooks with their owning surface rather than placing popup persistence or browser lifecycle logic in a global hooks folder.
 
 Separate responsibilities by ownership, not by creating a file for each function or a component for each CSS class. Keep one owner for shared live state; consumers use that owner's operations rather than initialize parallel copies.
 

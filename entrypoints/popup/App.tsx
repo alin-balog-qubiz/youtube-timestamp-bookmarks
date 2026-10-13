@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 
 import { getActiveTabContext } from '@/services/popup';
@@ -34,17 +34,20 @@ export default function App() {
   const [settingsReadError, setSettingsReadError] = useState<string | null>(null);
   const [settingsRetryId, setSettingsRetryId] = useState(0);
 
+  const beforeSettingsLeaveRef = useRef<(() => Promise<boolean>) | null>(null);
+  const isNavigatingRef = useRef(false);
+  const latestSettingsReadIdRef = useRef(0);
+
   const { activeTabContext, selectedPage } = popupState;
 
   useEffect(() => {
     let isDisposed = false;
-    let latestReadId = 0;
     browser.storage.onChanged.addListener(handleSettingsChanged);
     void readSettings();
 
     return () => {
       isDisposed = true;
-      latestReadId++;
+      latestSettingsReadIdRef.current++;
       browser.storage.onChanged.removeListener(handleSettingsChanged);
     };
 
@@ -53,20 +56,20 @@ export default function App() {
     }
 
     async function readSettings() {
-      const readId = ++latestReadId;
+      const readId = ++latestSettingsReadIdRef.current;
       setIsReadingSettings(true);
       try {
         const savedPreferences = await getSettings();
-        if (isDisposed || readId !== latestReadId) return;
+        if (isDisposed || readId !== latestSettingsReadIdRef.current) return;
 
         setPreferences(savedPreferences);
         setSettingsReadError(null);
       } catch (failure) {
-        if (isDisposed || readId !== latestReadId) return;
+        if (isDisposed || readId !== latestSettingsReadIdRef.current) return;
 
         setSettingsReadError(failure instanceof Error ? failure.message : 'Unable to load settings.');
       } finally {
-        if (!isDisposed && readId === latestReadId) setIsReadingSettings(false);
+        if (!isDisposed && readId === latestSettingsReadIdRef.current) setIsReadingSettings(false);
       }
     }
   }, [settingsRetryId]);
@@ -148,12 +151,30 @@ export default function App() {
     }
   }, []);
 
-  function navigate(destinationPage: PopupPage) {
-    setPopupState((currentState) => ({
-      ...currentState,
-      selectedPage: destinationPage,
-      hasSelectedInitialPage: true,
-    }));
+  async function navigate(destinationPage: PopupPage) {
+    if (destinationPage === selectedPage || isNavigatingRef.current) return;
+
+    isNavigatingRef.current = true;
+    try {
+      if (selectedPage === 'settings' && beforeSettingsLeaveRef.current &&
+        !await beforeSettingsLeaveRef.current()) return;
+
+      setPopupState((currentState) => ({
+        ...currentState,
+        selectedPage: destinationPage,
+        hasSelectedInitialPage: true,
+      }));
+    } finally {
+      isNavigatingRef.current = false;
+    }
+  }
+
+  function adoptPreferences(saved: MarkerPreferences) {
+    // An older storage read must not replace a just-confirmed mutation response.
+    latestSettingsReadIdRef.current++;
+    setPreferences(saved);
+    setSettingsReadError(null);
+    setIsReadingSettings(false);
   }
 
   const contextNotice = activeTabContext.status === 'loading'
@@ -172,7 +193,7 @@ export default function App() {
       <PopupHeader
         selectedPage={selectedPage}
         hasActiveVideo={activeTabContext.status === 'supported'}
-        onNavigate={navigate}
+        onNavigate={(destinationPage) => { void navigate(destinationPage); }}
       />
       <main className="popup-content">
         {contextNotice}
@@ -214,7 +235,8 @@ export default function App() {
                   isReadingSettings={isReadingSettings}
                   readError={settingsReadError}
                   onRetry={() => setSettingsRetryId((id) => id + 1)}
-                  onPreferencesChange={setPreferences}
+                  onPreferencesChange={adoptPreferences}
+                  beforeLeaveRef={beforeSettingsLeaveRef}
                 />
               )}
             </section>

@@ -14,7 +14,7 @@ import BookmarkEditor from '../components/BookmarkEditor';
 import { BookmarkRow, ConfirmationDialog, EmptyState, ErrorState, Notice, Skeleton, Toast, VideoSummary } from '@/ui';
 
 interface ThisVideoPageProps {
-  activeTabContext: ActiveTabContext;
+  readonly activeTabContext: ActiveTabContext;
 }
 
 interface SavedVideoState {

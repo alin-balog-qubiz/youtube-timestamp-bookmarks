@@ -13,7 +13,7 @@ import type { MarkerPreferences } from '@/models/marker-preferences';
 import { Button, ConfirmationDialog, EmptyState, ErrorState, Link, Notice, SearchInput, Skeleton, Toast, VideoGroup } from '@/ui';
 
 interface AllVideosPageProps {
-  activeTabContext: ActiveTabContext;
+  readonly activeTabContext: ActiveTabContext;
 }
 
 interface LibraryState {

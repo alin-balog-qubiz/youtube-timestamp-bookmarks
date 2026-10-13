@@ -12,8 +12,10 @@ Deliver the first usable vertical slice from [product scope](../../docs/scope.md
 
 1. On a standard `youtube.com/watch` page with a playable video, a small `+` control appears among the player controls. It has an accessible name and tooltip. No save control is added on non-watch pages or when there is no usable video ID/playback position.
 2. Clicking saves the current playback position at whole-second precision without pausing or opening a form. Capture the video ID from the current watch page and its displayed title when available.
-3. Beside the control, briefly show **Saved** after a new bookmark or **Already saved** when that video and second already exist. A duplicate preserves the existing bookmark, including its name, color, and creation date. A storage failure must not report **Saved**; show a short failure message instead.
+3. Above the control, briefly show **Saved** after a new bookmark or **Already saved** when that video and second already exist, replacing the hover label without shifting neighboring controls. A duplicate preserves the existing bookmark, including its name, color, and creation date. A storage failure must not report **Saved**; show a short failure message instead.
 4. Repeated watch-page navigation in YouTube's single-page app must use the newly active video's ID, title, and playback position; avoid leaving a control attached to a departed player or adding duplicate controls.
+
+Visual refinement is implemented locally, with user verification pending: the `+` host uses YouTube's control sizing/alignment styles and a centered outline icon. A shared marker-style pill replaces the browser-native tooltip on hover and keyboard focus. Save behavior and feedback semantics are preserved. See [player-controls polish](../player-controls-polish/spec.md).
 
 ## Data contract
 

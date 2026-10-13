@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 
 import { resolveColorChoice } from '../utils/color';
 import { useTheme } from '../utils/theme';
@@ -6,13 +6,15 @@ import { useTheme } from '../utils/theme';
 import type { ColorChoice } from '../utils/types';
 
 export type ColorPickerProps = {
-  label?: string;
-  value?: ColorChoice;
-  labelHidden?: boolean;
-  defaultChoice: ColorChoice;
-  onChange: (choice: ColorChoice | undefined) => void;
-  allowDefault?: boolean;
-  disabled?: boolean;
+  readonly label?: string;
+  readonly value?: ColorChoice;
+  readonly labelHidden?: boolean;
+  readonly defaultChoice: ColorChoice;
+  readonly onChange: (choice: ColorChoice | undefined) => void;
+  readonly onInput?: (choice: ColorChoice) => void;
+  readonly onCommit?: () => void;
+  readonly allowDefault?: boolean;
+  readonly disabled?: boolean;
 };
 
 const presets = [
@@ -23,9 +25,12 @@ const presets = [
 
 export function ColorPicker({
   label = 'Marker color', labelHidden = false, value, defaultChoice, onChange,
-  allowDefault = false, disabled,
+  allowDefault = false, disabled, onInput, onCommit,
 }: ColorPickerProps) {
   const [customValue, setCustomValue] = useState(value?.type === 'custom' ? value.value : defaultChoice.type === 'custom' ? defaultChoice.value : '#2563eb');
+
+  const colorInputRef = useRef<HTMLInputElement | null>(null);
+  const lastInputValueRef = useRef(customValue);
 
   const groupId = useId();
   const { resolvedTheme } = useTheme();
@@ -38,6 +43,26 @@ export function ColorPicker({
     if (value?.type === 'custom') setCustomValue(value.value);
     else if (value === undefined && !allowDefault && defaultChoice.type === 'custom') setCustomValue(defaultChoice.value);
   }, [value, defaultChoice, allowDefault]);
+
+  useEffect(() => {
+    const input = colorInputRef.current;
+    if (!input) return;
+
+    // React onChange also fires for native input events. Listen to the actual
+    // DOM change event separately so continuous input never acts as a commit.
+    function commitColor() {
+      if (!input) return;
+      if (input.value !== lastInputValueRef.current) {
+        lastInputValueRef.current = input.value;
+        setCustomValue(input.value);
+        (onInput ?? onChange)({ type: 'custom', value: input.value });
+      }
+      onCommit?.();
+    }
+
+    input.addEventListener('change', commitColor);
+    return () => input.removeEventListener('change', commitColor);
+  }, [onInput, onChange, onCommit]);
 
   return (
     <fieldset className="yb-choice-fieldset yb-color-picker" disabled={disabled}>
@@ -63,14 +88,19 @@ export function ColorPicker({
               <span>Custom</span>
             </label>
             <input
+              ref={colorInputRef}
               className="yb-color-input"
               type="color"
               aria-label={`Custom ${label.toLowerCase()}`}
               aria-describedby={isInheriting ? `${groupId}-inherited-color` : undefined}
               value={customValue}
-              onChange={(event) => {
+              onInput={(event) => {
+                lastInputValueRef.current = event.currentTarget.value;
                 setCustomValue(event.currentTarget.value);
-                onChange({ type: 'custom', value: event.currentTarget.value });
+                (onInput ?? onChange)({ type: 'custom', value: event.currentTarget.value });
+              }}
+              onBlur={(event) => {
+                if (!event.currentTarget.closest('fieldset')?.contains(event.relatedTarget)) onCommit?.();
               }}
             />
           </div>

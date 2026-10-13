@@ -156,6 +156,8 @@ Canonical color choice is a discriminated value: `{ type: 'preset', preset: 'acc
 
 Resolve presets from the table above using the resolved theme; Custom is an opaque six-digit hex value independent of theme. Never persist resolved preset hex values as though they were Custom. Existing global/default and bookmark hex colors migrate to Custom, even if they resemble a preset, preserving the user's saved values and identity/creation dates. Explicit presets follow theme changes; overrides never start inheriting accidentally.
 
+Implemented interaction refinement, with user verification pending: Settings' continuous native Custom color input uses immediate local feedback with a 1-second trailing persistence debounce, avoiding per-change save/disable cycles. Preset and remembered Custom selections remain immediate. Ordered preference writes protect newer selections and other settings; native commit, navigation, and backup boundaries flush pending color work. Failed saves retain an explicitly unsaved preview without automatic retries. The shared picker remains draft-only in BookmarkEditor until Save changes. See [color wheel improvement](../color-wheel-improvement/spec.md) for lifecycle limits and user-owned acceptance scenarios.
+
 One resolver serves popup rows and previews; retain the host integration's existing behavior without restyling quick add. Future marker rendering must consume the same choice model. Do not implement markers or infer a marker rendering theme in this effort.
 
 ### Backup compatibility
