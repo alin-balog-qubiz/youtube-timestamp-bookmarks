@@ -10,6 +10,8 @@ import type { PlayerClient, PlayerContext } from './player';
 import type { Bookmark, Video } from '@/models/bookmark';
 import type { MarkerPreferences } from '@/models/marker-preferences';
 
+import { playerTooltipCss } from '@/ui/styles/player-tooltip';
+
 type SupportedPlayer = Extract<PlayerContext, { status: 'supported' }>;
 type MarkerMount = {
   context: SupportedPlayer;
@@ -128,7 +130,7 @@ export function initializePlayerMarkers(ctx: ContentScriptContext, playerClient:
       button { box-sizing: border-box; position: absolute; top: 50%; transform: translate(-50%, -50%); width: 8px; height: 12px; padding: 0; border: 1px solid rgba(40, 40, 40, 0.6); border-radius: 5px; background: var(--marker-color); box-shadow: 0 1px 3px #000; cursor: pointer; pointer-events: auto; }
       button:hover { z-index: 1; }
       button:focus-visible { outline: 2px solid white; outline-offset: 3px; z-index: 2; }
-      .tooltip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); max-width: 240px; width: max-content; padding: 8px 14px; border-radius: 28px; background: rgba(0, 0, 0, 0.3); color: white; font: 500 12px/1.4 Roboto, Arial, sans-serif; overflow-wrap: anywhere; pointer-events: none; }
+      .tooltip { ${playerTooltipCss} display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); }
       button:hover .tooltip, button:focus-visible .tooltip { display: block; }
       button[data-edge="start"] .tooltip { left: 0; transform: none; }
       button[data-edge="end"] .tooltip { left: auto; right: 0; transform: none; }

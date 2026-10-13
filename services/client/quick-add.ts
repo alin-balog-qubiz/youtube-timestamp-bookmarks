@@ -3,6 +3,8 @@ import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { createBookmark } from '@/services/messaging/bookmark-requests';
 import type { PlayerClient } from './player';
 
+import { playerTooltipCss } from '@/ui/styles/player-tooltip';
+
 const feedbackDurationMs = 2500;
 
 export function initializeQuickAdd(ctx: ContentScriptContext, playerClient: PlayerClient): void {
@@ -68,31 +70,51 @@ export function initializeQuickAdd(ctx: ContentScriptContext, playerClient: Play
 
   function mount(videoId: string, controls: HTMLElement, parent: Element) {
     const element = document.createElement('span');
-    element.className = 'yt-bookmarks-quick-add';
+    element.className = 'yt-bookmarks-quick-add ytp-button';
 
     const shadow = element.attachShadow({ mode: 'open' });
     const style = document.createElement('style');
     style.textContent = `
-      :host { display: inline-flex; align-items: center; height: 100%; vertical-align: top; }
-      button { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 100%; padding: 0; border: 0; background: transparent; color: white; font: 500 26px Arial, sans-serif; cursor: pointer; }
-      button:hover, button:focus-visible { background: rgba(255, 255, 255, .2); }
+      /* Shadow-host !important keeps page button rules from clipping the pills. */
+      :host { position: relative; overflow: visible !important; }
+      button { box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: white; cursor: pointer; }
       button:focus-visible { outline: 2px solid white; outline-offset: -3px; }
       button:disabled { opacity: .6; cursor: wait; }
-      .feedback { color: white; font: 500 12px Arial, sans-serif; white-space: nowrap; padding-right: 8px; text-shadow: 0 1px 2px black; }
-      .feedback:empty { display: none; }
+      svg { display: block; width: 24px; height: 24px; pointer-events: none; }
+      .tooltip, .feedback { ${playerTooltipCss} position: absolute; bottom: calc(100% + 20px); left: 50%; transform: translateX(-50%); z-index: 1; }
+      .tooltip, .feedback:empty { display: none; }
+      button:hover ~ .tooltip, button:focus-visible ~ .tooltip { display: block; }
+      .feedback:not(:empty) ~ .tooltip { display: none; }
     `;
 
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = '+';
     button.setAttribute('aria-label', 'Save current moment');
-    button.title = 'Save current moment';
+
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('fill', 'none');
+    icon.setAttribute('stroke', 'currentColor');
+    icon.setAttribute('stroke-width', '2');
+    icon.setAttribute('stroke-linecap', 'round');
+    icon.setAttribute('stroke-linejoin', 'round');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.setAttribute('focusable', 'false');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M12 5v14M5 12h14');
+    icon.append(path);
+    button.append(icon);
+
+    const tooltip = document.createElement('span');
+    tooltip.className = 'tooltip';
+    tooltip.textContent = 'Save current moment';
+    tooltip.setAttribute('aria-hidden', 'true');
 
     const status = document.createElement('span');
     status.className = 'feedback';
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
-    shadow.append(style, button, status);
+    shadow.append(style, button, status, tooltip);
 
     controls.prepend(element);
     host = element;
