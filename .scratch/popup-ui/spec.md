@@ -8,6 +8,8 @@ This specification defines popup operation rules. The approved [design-system im
 
 [Storage and quick add](../storage-and-quick-add/spec.md) are complete. The shared popup model and operations now drive the design-system pages and dialogs, including persisted appearance/colors and versioned JSON backup/restore. Historical POC verification does not verify this cutover. Player-marker rendering remains unimplemented.
 
+The locally implemented [import/export rewrite](../import-export-rewrite/spec.md), with verification pending, supersedes the earlier settings-inclusive backup contract. This document's current transfer requirements below point to that spec; completed POC/cutover issue evidence remains historical.
+
 ## Implementation and review slices
 
 The following slices record the POC's implementation sequence, not the new design-system work. Their historical `Status` lines do not imply adoption of the approved replacement UI; implement that cutover through the two issues in the linked design-system spec.
@@ -75,7 +77,7 @@ The popup has exactly three pages: **All videos**, **This video**, and **Setting
 - Use the design-system editor dialog with formatted timestamp, optional name, preset/custom/default color choices, and explicit **Save changes / Cancel**.
 - Provide **−5s**, **−1s**, **+1s**, and **+5s** buttons beside the timestamp. No direct timestamp entry in this slice.
 - Buttons change the draft only. Save commits timestamp, name, and color together; Cancel leaves stored data unchanged.
-- A blank name means unnamed. Marker choices are theme-aware **Accent / Gray / Ink** presets or a fixed opaque six-digit **Custom** hex color chosen through the native picker. A separate **Use default** control removes the bookmark's override; show selected choice/color and inherited state without relying on color alone. Existing saved hex colors remain fixed Custom values during migration. Settings uses the same choice contract; its canonical model and resolver are defined in the design-system spec.
+- A blank name means unnamed. Marker choices are theme-aware **Accent / Gray / Ink** presets or a fixed opaque six-digit **Custom** hex color chosen through the native picker. A separate **Use default** control removes the bookmark's override; show selected choice/color and inherited state without relying on color alone. Settings uses the same choice contract; its canonical model and resolver are defined in the design-system spec. Prelaunch hex-string records need not be migrated or preserved.
 - Adjustment stays within whole seconds from `0` through `floor(active player duration)`, inclusive. Disable any adjustment button whose result would be outside that range; do not clamp an oversized step to a boundary.
 - If duration is unavailable or non-finite, disable timestamp adjustment with an explanation while permitting name/color edits. Recheck the active video and duration bounds when saving a timestamp change.
 - Bookmark identity remains `(video ID, whole second)`. Moving to another second changes that identity while preserving the creation date and retaining the name/color unless edited in the same draft.
@@ -88,7 +90,7 @@ The popup has exactly three pages: **All videos**, **This video**, and **Setting
 
 - Use **Light / Dark / System**, defaulting to System. Persist the preference immediately through the background settings boundary and restore it on reopen/restart.
 - System follows OS theme changes; explicit Light/Dark does not. Failed reads/writes show accurate errors rather than a falsely saved choice.
-- Backups include theme; Merge retains current theme, Replace adopts incoming theme, and Replace of a legacy backup without theme selects System.
+- Theme is not transfer data. Neither Merge nor Replace changes it. Prelaunch backups are unsupported under the import/export rewrite.
 
 ### Player markers
 
@@ -99,66 +101,35 @@ The popup has exactly three pages: **All videos**, **This video**, and **Setting
 
 ### Backup and restore
 
-- Group JSON export and import under **Backup**, matching the prototype.
-- Export a readable JSON file containing all bookmarks and settings, independent of the current page or title filter. No confirmation is required for export.
-- Import is staged within Settings: choose JSON file → open the import-preview dialog → choose **Merge / Replace all** → inspect the effect → explicitly confirm.
-- **Merge** adds non-duplicate bookmarks and keeps existing bookmarks and current settings. Identity uses video ID plus whole second. Preview additions and skipped duplicates.
-- **Replace** replaces all bookmarks and settings. Preview the current data being replaced, incoming totals, and settings changes; require clearly destructive confirmation.
-- Validate the file before applying it. Invalid files show an error and change nothing. Canceling the preview also changes nothing.
-- Present operation success only after persistence succeeds. Import failures must not be presented as successful imports.
+The [import/export rewrite](../import-export-rewrite/spec.md) owns transfer workflow, file schemas, validation, conflict reporting, and release versioning. It is implemented locally with verification pending; the previous version-2 settings-inclusive workflow is historical implementation state, not the current contract.
+
+- Keep import/export under Settings' **Backup** group. Both dialogs select videos, initially all selected, with title-only filtering that does not alter selection. Select all includes hidden rows; display selected video/bookmark totals.
+- Export includes only selected videos/bookmarks, with an optional filename and one final Export action. Export a fresh consistent reviewed subset; selected-data changes refresh review and require another action.
+- Import previews accepted selected data, inspectable validation omissions, identical duplicates, and existing-wins conflicts. Merge adds missing identities and retains existing titles/bookmark metadata; disable it with **Nothing new to import** when nothing changes.
+- **Replace library** installs the accepted selected subset as the entire library, deleting absent/deselected current records. Show deletion totals and that skipped records will not be restored; use one final destructive action, not a second dialog or acknowledgement checkbox.
+- Never export/import preferences. Explicit bookmark overrides are transferred; omitted color inherits the destination default. There is no legacy import path.
+- Broken/unsupported envelopes block import. Known-schema invalid videos/bookmarks are skipped with reasons; ambiguous repeated incoming IDs/seconds have no arbitrary winner. No valid selected bookmarks means no import, not a library-clearing action.
+- Cancel and persistence failure leave stored data unchanged. Partial acceptance commits atomically, and success follows confirmed persistence.
 
 ### Backup format and persistence
 
-Exports and normalized internal snapshots use **version 2**. Imports strictly accept version 1 or 2 under the unchanged format identifier; validation at both file selection and the background boundary normalizes version 1 before preview or mutation.
+- New exports use `schemaVersion: 1`, the current build's `appVersion`, and video records containing bookmark arrays under the `youtube-timestamp-bookmarks` identifier; no settings or old `version` field. See [schema 1](../import-export-rewrite/spec.md#schema-1).
+- Reject prelaunch version-1/version-2 backups instead of adapting them. An old version: 1 field is not launch schemaVersion: 1. See the [clean launch baseline](../import-export-rewrite/spec.md#clean-launch-baseline).
+- Retain one authoritative timestamp-keyed storage model. All existing development bookmarks/preferences may be reset at cutover; no legacy normalization, storage migration, or existing-key preservation is required. No key rename is required merely because file-schema numbering starts at 1.
+- Background imports and consistent snapshots coordinate with per-video mutations through the library barrier. Recheck relevant library data before commit; stale data requires refreshed review, but settings-only changes do not invalidate it.
+- Replace commits accepted video records and removals together, never settings. Existing null tombstones remain absent to readers. Failure must not partially apply a replacement.
+- Export retains the browser downloads API boundary and reports completion/interruption before releasing temporary download resources.
+- Remove settings adoption and settings-inclusive snapshot coupling from transfer callers as part of the rewrite, without changing normal preference persistence.
 
-- Envelope: `{ "format": "youtube-timestamp-bookmarks", "version": 2, "videos": [...], "settings": {...} }`. No other top-level fields are allowed. `videos` may be empty.
-- Video: nonblank string `id`, optional string `title`, and `bookmarks` object. IDs must be unique. Each bookmark key is a canonical nonnegative safe whole-second string (`"0"` is valid; `"00"`, `"-1"`, `"1.0"` and unsafe integers are not).
-- Bookmark: matching nonnegative safe-integer `timestamp`, valid calendar/time ISO `createdAt` with a time zone, optional string `name`, and optional `color` choice. Unknown fields are rejected. Names, titles, exact Custom hex spelling and creation dates are preserved; Unnamed bookmark is never stored as a fallback.
-- Color choice: exactly `{ "type": "preset", "preset": "accent" | "gray" | "ink" }` or `{ "type": "custom", "value": "#rrggbb" }`. Hex digits are case-insensitive and retain their original spelling. Unknown fields, missing members, invalid presets/types, and non-six-digit colors are rejected. Omitted bookmark color means inheritance, not an extra preset or null value.
-- Version-2 settings: exactly `{ "showMarkers": boolean, "defaultColor": ColorChoice, "theme": "light" | "dark" | "system" }`; all three fields are required.
-- Legacy version 1 uses the same envelope/video/bookmark metadata with `version: 1`, optional six-digit hex string bookmark `color`, and exactly `{ "showMarkers": boolean, "defaultColor": "#rrggbb" }` settings. Theme and semantic objects are not accepted in that legacy schema. Normalization wraps each hex in Custom and adds System theme. Version-2 string colors or missing theme are rejected, not treated as legacy.
-- Validation rejects unsupported format/version, unknown fields, duplicate video IDs, invalid calendar dates/colors/settings, and timestamp keys that disagree with their bookmark before import mutation.
-- Merge retains existing video titles as well as duplicate bookmark metadata/settings; incoming titles are used for new videos. Preview video totals count videos with bookmarks, matching All videos.
-- Background imports, preference writes, and consistent backup snapshots share a library-wide barrier with existing per-video mutations. Confirmation rechecks the current snapshot; concurrent changes require a new preview before importing.
-- Replace commits records and settings in one local storage batch. Removed records become null tombstones, treated as absent by the shared readers, avoiding separate deletes that could partially apply a failed replacement.
-- Export uses the browser downloads API with the `downloads` permission and reports completion or interruption before releasing its Blob URL.
-- Storage keeps `videos:v1:*` and `marker-preferences:v1` keys. Background appearance migration uses the same library barrier and a single batch for legacy records/settings; read-only normalization never writes from a popup. Existing saved hex choices remain Custom even when they match a preset. Fresh settings use Accent/System.
+### Backup regression contracts
 
-```json
-{
-  "format": "youtube-timestamp-bookmarks",
-  "version": 2,
-  "videos": [
-    {
-      "id": "example-video",
-      "title": "Saved video",
-      "bookmarks": {
-        "0": {
-          "timestamp": 0,
-          "createdAt": "2026-10-02T12:00:00.000Z",
-          "name": "Opening",
-          "color": { "type": "custom", "value": "#A1b2C3" }
-        }
-      }
-    }
-  ],
-  "settings": {
-    "showMarkers": true,
-    "defaultColor": { "type": "preset", "preset": "accent" },
-    "theme": "system"
-  }
-}
-```
+These are future behavioral requirements, not exercised-test claims. The new transfer acceptance scenarios live in the [rewrite spec](../import-export-rewrite/spec.md#acceptance-criteria-and-implementation-verification).
 
-### Migration and backup regression contracts
+- Prelaunch data is disposable; remove obsolete compatibility paths and preservation requirements during implementation. Fresh settings remain Accent/System, independently of transfers.
+- Schema-1 import round trips preserve accepted timestamps, names, titles, dates, explicit colors, and omitted-color inheritance without writing settings.
+- Merge preserves existing metadata; whole-library Replace uses only accepted selected records. Empty/all-invalid inputs cannot wipe the library.
+- Relevant concurrent library mutations refresh preview; preference-only changes do not. Failed persistence retains the library/review, releases queues, and never produces success feedback.
 
-These are behavioral acceptance contracts, not claims of exercised tests. The repository has no configured test suite; the user owns source checks and cutover verification.
-
-- Legacy storage and version-1 Replace preserve second zero, identities, names, titles, exact hex colors, and creation dates; default/override hex values become Custom and absent theme becomes System. Fresh data uses Accent rather than the old installation fallback.
-- Version-2 export/Replace round trip preserves visibility, theme and preset/custom/default inheritance. Custom is fixed across themes; presets resolve through the one shared resolver. Unknown discriminants/fields, missing version-2 theme, legacy semantic objects, invalid dates/keys and unsupported versions are rejected without an import write.
-- Merge preserves existing settings and duplicate title/bookmark metadata, adds only new identities, and reports actual additions/skipped duplicates. Empty/different Replace replaces both settings and library in one batch; removed groups become absent through tombstones.
-- Canceled or unacknowledged Replace cannot commit. Preview totals/settings changes must correspond to the committed snapshot. Concurrent mutations/settings changes invalidate the preview; refresh is required before confirming.
-- Persistence failure must retain the current library and editable/import state, release the shared queue, and never display successful save/import feedback. Concurrent quick add must not be overwritten by migration, preference writes, snapshots or imports.
 
 ## Shared states and presentation
 
@@ -188,5 +159,5 @@ Deferred: advanced sorting, typo-tolerant/fuzzy search, ID/bookmark-name search,
 6. Adjustment buttons change only the draft, allow zero, respect finite duration bounds, and reject steps crossing either boundary. Unknown duration blocks adjustment but not name/color edits. Cancel changes nothing.
 7. A saved move changes the identity and list position without changing creation date. A target-second collision, persistence failure, or changed active-video context does not overwrite or lose bookmarks.
 8. Marker preferences persist immediately; inherited rows follow default choices, overrides remain independent, presets resolve per theme, and Custom colors remain fixed. Use default restores inheritance. Light/Dark/System persists, defaults to System, and follows OS changes only in System.
-9. Export covers the complete library/settings, including theme and color choices after cutover. Import previews Merge and Replace all effects, accepts legacy and new backups, preserves existing duplicates/settings on Merge, replaces both on Replace, and leaves data unchanged for invalid files or cancellation.
+9. Exercise the [approved rewrite's transfer acceptance scenarios](../import-export-rewrite/spec.md#acceptance-criteria-and-implementation-verification): selectable videos-only exports/imports, launch schema 1 and independent app versioning, rejection of prelaunch backups, disclosed partial imports, existing-wins Merge, whole-library Replace, stale reviews, and atomic failure behavior. These planned changes are not verified by historical settings-inclusive backup evidence.
 10. Loading/error/empty states are distinguishable; success follows persistence. Inline help works without Welcome or Guide, and no dead Guide links or nonfunctional placeholder controls ship.

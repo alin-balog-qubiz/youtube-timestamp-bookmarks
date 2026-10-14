@@ -1,65 +1,68 @@
-import { useId } from 'react';
+import type { ImportMode, ImportPreview as ImportPreviewData, ValidatedImport } from '@/models/backup';
 
 import { Button } from './Button';
 import { Dialog } from './Dialog';
+import { ImportConflictDetails } from './ImportConflictDetails';
 import { Notice } from './Notice';
 import { RadioChoice } from './RadioChoice';
+import { Skeleton } from './Skeleton';
+import { VideoSelector, type TransferVideo } from './VideoSelector';
 
 export interface ImportPreviewProps {
-  open: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  onRetry: () => void;
   fileName: string;
-  mode: 'merge' | 'replace';
-  onModeChange: (mode: 'merge' | 'replace') => void;
-  current: { videos: number; bookmarks: number };
-  incoming: { videos: number; bookmarks: number };
-  additions: number;
-  duplicates: number;
-  settingsChanges: readonly string[];
-  acknowledged: boolean;
-  onAcknowledgedChange: (acknowledged: boolean) => void;
-  pending?: boolean;
-  previewReady?: boolean;
-  previewPending?: boolean;
-  onRefresh?: () => void;
-  error?: string;
+  mode: ImportMode;
+  onModeChange: (mode: ImportMode) => void;
+  videos: readonly TransferVideo[];
+  selectedVideoIds: readonly string[];
+  onSelectionChange: (ids: string[]) => void;
+  validated: ValidatedImport | null;
+  preview: ImportPreviewData | null;
+  reading: boolean;
+  previewPending: boolean;
+  pending: boolean;
+  completed: boolean;
+  error: string | null;
+  reviewNotice: string | null;
 }
 
 const importModes = [
-  { value: 'merge', label: 'Merge', description: 'Add new bookmarks. Keep existing bookmarks and current settings.' },
-  { value: 'replace', label: 'Replace all', description: 'Remove the current library and use the backup bookmarks and settings.' },
+  { value: 'merge', label: 'Merge', description: 'Add missing bookmarks. Existing titles and bookmark details win.' },
+  { value: 'replace', label: 'Replace', description: 'Install the selected videos as the entire library. Preferences are unchanged.' },
 ] as const;
 
 export function ImportPreview({
-  open, onClose, onConfirm, fileName, mode, onModeChange, current, incoming,
-  additions, duplicates, settingsChanges, acknowledged, onAcknowledgedChange,
-  pending = false, previewReady = true, previewPending = false, onRefresh, error,
+  onClose, onConfirm, onRetry, fileName, mode, onModeChange, videos, selectedVideoIds,
+  onSelectionChange, validated, preview, reading, previewPending, pending, completed, error, reviewNotice,
 }: ImportPreviewProps) {
-  const acknowledgementId = useId();
-  const busy = pending || previewPending;
-  const confirmationBlocked = busy || !previewReady || Boolean(error) || (mode === 'replace' && !acknowledged);
+  const selectedBookmarks = videos.reduce((total, video) =>
+    total + (selectedVideoIds.includes(video.id) ? video.bookmarkCount : 0), 0);
+  const nothingNew = mode === 'merge' && preview !== null && preview.additions === 0;
+  const confirmationBlocked = reading || previewPending || pending || !preview || selectedBookmarks === 0 || nothingNew;
+  const diagnostics = preview?.diagnostics ?? validated?.diagnostics ?? [];
+  const bookmarkConflicts = preview?.conflicts.filter((conflict) => conflict.timestamp !== undefined) ?? [];
+  const titleDifferences = preview?.conflicts.filter((conflict) => conflict.timestamp === undefined) ?? [];
 
   return (
     <Dialog
-      open={open}
+      open
       onClose={onClose}
-      title="Import bookmarks"
-      description="Review this backup before making changes."
-      pending={busy}
-      footer={(
+      title={completed ? 'Import completed' : 'Import bookmarks'}
+      description="Transfer videos and bookmarks only. Preferences and inherited default colors are not imported."
+      pending={pending}
+      footer={completed ? (
+        <Button variant="accent" onClick={onClose}>Done</Button>
+      ) : (
         <>
-          <Button variant="quiet" disabled={busy} onClick={onClose}>Cancel</Button>
+          <Button variant="quiet" disabled={pending} onClick={onClose}>Cancel</Button>
           <Button
             variant={mode === 'replace' ? 'danger' : 'accent'}
             pending={pending}
             disabled={confirmationBlocked}
-            onClick={() => {
-              if (!confirmationBlocked) onConfirm();
-            }}
-          >
-            Confirm import
-          </Button>
+            onClick={onConfirm}
+          >{mode === 'replace' ? 'Replace library' : 'Merge'}</Button>
         </>
       )}
     >
@@ -68,78 +71,92 @@ export function ImportPreview({
           <span className="yb-dialog-field-label">Backup file</span>
           <strong>{fileName}</strong>
         </div>
-
-        <RadioChoice
-          label="Import mode"
-          value={mode}
-          options={importModes}
-          disabled={busy}
-          onChange={(value) => {
-            if (busy || (value !== 'merge' && value !== 'replace') || value === mode) return;
-            onAcknowledgedChange(false);
-            onModeChange(value);
-          }}
-        />
-
-        {previewReady ? (
+        {reading && <Skeleton rows={3} label="Reading and validating the JSON backup" />}
+        {validated && (
           <>
+            <VideoSelector
+              videos={videos}
+              selectedVideoIds={selectedVideoIds}
+              onSelectionChange={onSelectionChange}
+              disabled={pending || completed}
+              emptyMessage="This file has no valid bookmarks to import. It cannot clear your library."
+            />
+            {!completed && (
+              <RadioChoice
+                label="Import mode"
+                value={mode}
+                options={importModes}
+                disabled={pending}
+                onChange={(value) => {
+                  if (value === 'merge' || value === 'replace') onModeChange(value);
+                }}
+              />
+            )}
             <dl className="yb-import-counts">
-              <div><dt>Current library</dt><dd>{current.videos} videos · {current.bookmarks} bookmarks</dd></div>
-              <div><dt>Incoming backup</dt><dd>{incoming.videos} videos · {incoming.bookmarks} bookmarks</dd></div>
-              {mode === 'merge' && (
+              <div><dt>Validation omissions</dt><dd>{validated.skippedVideos} videos · {validated.skippedBookmarks} bookmarks</dd></div>
+              {preview && (
                 <>
-                  <div><dt>Bookmarks to add</dt><dd>{additions}</dd></div>
-                  <div><dt>Duplicates to skip</dt><dd>{duplicates}</dd></div>
+                  <div><dt>Selected data</dt><dd>{preview.incomingVideos} videos · {preview.incomingBookmarks} bookmarks</dd></div>
+                  {mode === 'merge' && (
+                    <>
+                      <div><dt>{completed ? 'Bookmarks added' : 'Bookmarks to add'}</dt><dd>{preview.additions} across {preview.addedVideos} new videos</dd></div>
+                      <div><dt>Identical duplicates skipped</dt><dd>{preview.skippedDuplicates}</dd></div>
+                      <div><dt>Existing bookmark conflicts skipped</dt><dd>{preview.skippedConflicts}</dd></div>
+                    </>
+                  )}
                 </>
               )}
             </dl>
-
-            {mode === 'merge' ? (
+            {preview && (completed ? (
               <Notice>
-                Merge adds {additions} new bookmarks and skips {duplicates} duplicates. Existing bookmark details and current settings are kept.
+                {mode === 'merge'
+                  ? `Saved ${preview.additions} new bookmarks across ${preview.addedVideos} new videos. ${preview.skippedDuplicates} identical duplicates and ${preview.skippedConflicts} bookmark conflicts were skipped; existing data was kept.`
+                  : `Replaced the library with ${preview.incomingBookmarks} bookmarks across ${preview.incomingVideos} videos. Removed the previous ${preview.currentBookmarks} bookmarks across ${preview.currentVideos} videos.`}
+                {' '}Validation omitted {preview.skippedVideos} videos and {preview.skippedBookmarks} bookmarks. Diagnostics remain below. Preferences were not changed.
+              </Notice>
+            ) : mode === 'replace' ? (
+              <Notice variant="warning">
+                Replace library removes all current {preview.currentBookmarks} bookmarks across {preview.currentVideos} videos, including videos absent from this file or deselected here. It installs only the selected {preview.incomingBookmarks} bookmarks across {preview.incomingVideos} videos. Skipped records will not be restored. This cannot be undone.
               </Notice>
             ) : (
-              <Notice variant="warning">
-                Replace all removes the current {current.bookmarks} bookmarks across {current.videos} videos and replaces them with {incoming.bookmarks} bookmarks across {incoming.videos} videos from this backup. This cannot be undone.
-              </Notice>
+              <Notice>Merge adds missing bookmarks only. Existing video titles and bookmark metadata are kept.</Notice>
+            ))}
+            {nothingNew && !completed && <Notice>Nothing new to import. Duplicates and conflicts remain available for inspection below.</Notice>}
+            {diagnostics.length > 0 && (
+              <details className="yb-transfer-diagnostics">
+                <summary>Validation omissions ({validated.skippedVideos} videos · {validated.skippedBookmarks} bookmarks)</summary>
+                <ul>
+                  {diagnostics.map((diagnostic, index) => (
+                    <li key={`${diagnostic.location}-${index}`}>
+                      <strong>{diagnostic.videoTitle?.trim() || diagnostic.videoId || diagnostic.location}{diagnostic.timestamp === undefined ? '' : ` · ${diagnostic.timestamp}s`}</strong>
+                      <span className="yb-dialog-help">{diagnostic.location}</span>
+                      <p>{diagnostic.reason}</p>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
-
-            <section className="yb-import-settings" aria-label="Settings changes">
-              <h3>{mode === 'replace' ? 'Settings changes' : 'Backup settings (not applied by Merge)'}</h3>
-              {settingsChanges.length > 0 ? (
-                <ul>{settingsChanges.map((change, index) => <li key={`${change}-${index}`}>{change}</li>)}</ul>
-              ) : (
-                <p className="yb-dialog-help">No settings changes.</p>
-              )}
-            </section>
+            {preview && preview.duplicates.length > 0 && (
+              <details className="yb-transfer-diagnostics">
+                <summary>Identical duplicates ({preview.duplicates.length})</summary>
+                <ul>{preview.duplicates.map((duplicate) => (
+                  <li key={`${duplicate.videoId}-${duplicate.timestamp}`}>
+                    <strong>{duplicate.videoTitle?.trim() || duplicate.videoId} · {duplicate.timestamp}s</strong>
+                    <p>Identical bookmark. Existing kept.</p>
+                  </li>
+                ))}</ul>
+              </details>
+            )}
+            <ImportConflictDetails title="Bookmark metadata conflicts" conflicts={bookmarkConflicts} />
+            <ImportConflictDetails title="Video title differences" conflicts={titleDifferences} />
           </>
-        ) : (
-          <Notice>
-            {previewPending
-              ? 'Reading the current library and preparing an accurate preview…'
-              : 'Create a fresh preview before confirming. No bookmarks or settings have been changed.'}
-          </Notice>
         )}
-
-        {mode === 'replace' && previewReady && (
-          <label className="yb-import-acknowledgement" htmlFor={acknowledgementId}>
-            <input
-              id={acknowledgementId}
-              type="checkbox"
-              checked={acknowledged}
-              disabled={busy}
-              onChange={(event) => {
-                if (!busy) onAcknowledgedChange(event.target.checked);
-              }}
-            />
-            <span>I understand this replaces all current bookmarks and applies the backup settings.</span>
-          </label>
-        )}
+        {previewPending && <p className="yb-dialog-help" role="status">Reading the library and recomputing the selected import…</p>}
+        {pending && <p className="yb-dialog-help" role="status">Saving the reviewed import…</p>}
+        {reviewNotice && <Notice>{reviewNotice}</Notice>}
         {error && <Notice variant="error">{error}</Notice>}
-        {onRefresh && (
-          <Button variant="quiet" disabled={busy} pending={previewPending} onClick={onRefresh}>
-            Refresh preview
-          </Button>
+        {!reading && !previewPending && !pending && !completed && (!validated || !preview) && (
+          <Button variant="quiet" onClick={onRetry}>{validated ? 'Retry preview' : 'Retry reading file'}</Button>
         )}
       </div>
     </Dialog>

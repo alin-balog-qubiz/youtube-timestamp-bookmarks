@@ -38,28 +38,3 @@
 .popup-content .yb-bookmark-list {
   margin-top: 16px;
 }
-
-.popup-content .settings-file {
-  display: grid;
-  gap: 8px;
-  padding: 14px;
-  color: var(--yb-muted);
-  font-size: 12px;
-}
-
-.popup-content .settings-file input {
-  width: 100%;
-  min-width: 0;
-  color: var(--yb-fg);
-}
-
-.popup-content .settings-file input::file-selector-button {
-  margin-right: 8px;
-  padding: 8px 12px;
-  border: 1px solid var(--yb-control-border);
-  border-radius: var(--yb-radius-control);
-  background: var(--yb-raised);
-  color: var(--yb-fg);
-  font: inherit;
-  cursor: pointer;
-}

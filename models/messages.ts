@@ -1,6 +1,6 @@
 import type { BookmarkDraft, CreateBookmarkResult, Video } from './bookmark';
 import type { ActiveVideo } from './active-video';
-import type { Backup, ImportMode, ImportPreview } from './backup';
+import type { Backup, ExportReview, ImportCommit, ImportMode, ImportPreview } from './backup';
 import type { MarkerPreferences } from './marker-preferences';
 
 export type Result<T> =
@@ -84,23 +84,34 @@ export type UpdateSettingsResponse = Result<MarkerPreferences>;
 
 export interface GetBackupRequest {
   type: 'backup:get';
+  selectedVideoIds?: string[];
 }
 
 export type GetBackupResponse = Result<Backup>;
 
+export interface ReviewExportRequest {
+  type: 'backup:review-export';
+  selectedVideoIds: string[];
+  expectedCurrent: Backup;
+}
+
+export type ReviewExportResponse = Result<ExportReview>;
+
 export interface PreviewImportRequest {
   type: 'backup:preview';
-  backup: Backup;
+  incoming: unknown;
   mode: ImportMode;
+  selectedVideoIds: string[];
 }
 
 export type PreviewImportResponse = Result<ImportPreview>;
 
 export interface ImportBackupRequest {
   type: 'backup:import';
-  backup: Backup;
+  incoming: unknown;
   mode: ImportMode;
+  selectedVideoIds: string[];
   expectedCurrent: Backup;
 }
 
-export type ImportBackupResponse = Result<ImportPreview>;
+export type ImportBackupResponse = Result<ImportCommit>;

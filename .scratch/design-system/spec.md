@@ -129,42 +129,44 @@ The names below describe responsibilities. Each component has its own TSX file a
 | SettingRow / SettingGroup | Label, optional help/icon, control/action; divider treatment and raised group; Appearance / Playback / Backup headings |
 | TimestampAdjuster | Tabular draft time, −5s/−1s/+1s/+5s buttons; caller supplies legal range/availability; disable illegal steps, explain unknown duration; no direct entry |
 | BookmarkEditor | Optional name, timestamp adjuster, color picker with Use default, Cancel / Save changes; caller-owned draft, pending and error/context-change states |
-| ImportPreview | File identity, Merge/Replace all choices, actual current/incoming/addition/duplicate totals and settings changes, warning, Cancel / Confirm import; destructive acknowledgement for Replace |
+| ImportPreview | File identity, video selection/title filtering, Merge/Replace choices, accepted selected/addition/duplicate/skip totals and inspectable conflicts/reasons, warning, Cancel / Merge or Replace library; one final destructive Replace action, no settings changes or extra acknowledgement |
+| VideoSelector | All-selected initialization supplied by caller, individual selection, hidden-inclusive Select all, title-only filtering, accepted counts, empty/no-result states |
+| ImportConflictDetails | Inspectable identity, differing fields, existing/incoming values, and Existing kept; no conflict-resolution controls |
 
 ## Production behavior and persistence
 
 ### UI cutover
 
-- User-facing popup and extension metadata name: **YouTube Bookmarks**. Keep existing storage keys and backup format identifier stable; do not rename data because of branding.
+- User-facing popup and extension metadata name: **YouTube Bookmarks**. Keep the backup format identifier; prelaunch stored data/keys have no preservation obligation under the approved clean launch baseline.
 - Initial navigation, supported-context gating, chronology, recent-bookmark video ordering, title-only filtering, and seek/new-tab routing retain the popup operation contract.
 - Active-tab lookup failures use the concise recovery notice **Having trouble reading this tab’s context. Try opening YouTube.**, with YouTube linking to `https://www.youtube.com/` in a new tab. Keep the error treatment and existing navigation/context gating; do not replace lookup logic or suppress failures.
 - Show **Unnamed bookmark** alongside its time in both row styles; this is display fallback, not a persisted name.
 - All videos header/title/chevron toggles expansion. **Go to video** opens the watch page separately. **Delete video** confirms identity and bookmark count and removes that video's saved records; clearly explain that the YouTube source is unaffected.
 - This video retains individual edit, copy, and delete menus. Remove its old bulk-delete control; per-video deletion is available in All videos.
-- Editor and import use the prototype's dialog structures and labels. Preserve atomic edits, duration bounds, collision rejection, draft retention on failure, and stale-context prevention. Replace imports require explicit destructive confirmation and stale-preview checks.
+- Editor retains the prototype's dialog structure, atomic edits, duration bounds, collision rejection, draft retention on failure, and stale-context prevention. Import/export use bounded dialogs under the [rewrite spec](../import-export-rewrite/spec.md), with one final action and refreshed stale reviews; the rewrite is implemented locally with verification pending.
 - Popup empty guidance continues to refer to the actual player **+** control, which this effort leaves unchanged.
 
 ### Theme
 
 Store `light | dark | system` as preference, not the resolved OS color. Absent preference means System. Preference writes use the background settings boundary; successful selection persists across popup/browser restarts and is shared by extension-owned production UI. Display read/write failures truthfully; a failed write must not leave a falsely saved selection. Apply the known preference before displaying the surface where feasible to avoid a wrong-theme flash.
 
-In System, subscribe to OS theme changes with cleanup. Explicit Light/Dark ignores them. Backups include preference; Merge retains current preference, Replace adopts incoming preference. A legacy backup without theme resolves to System on Replace.
+In System, subscribe to OS theme changes with cleanup. Explicit Light/Dark ignores them. Under the approved import/export rewrite, theme is excluded from transfers and remains unchanged for both Merge and Replace. Prelaunch backups are unsupported; the prior settings-inclusive implementation is historical.
 
 ### Marker color model and migration
 
 Canonical color choice is a discriminated value: `{ type: 'preset', preset: 'accent' | 'gray' | 'ink' }` or `{ type: 'custom', value: '#rrggbb' }`. A bookmark without an override inherits the global default choice. Use default removes the override; it is not a fourth preset. New installations default to Accent.
 
-Resolve presets from the table above using the resolved theme; Custom is an opaque six-digit hex value independent of theme. Never persist resolved preset hex values as though they were Custom. Existing global/default and bookmark hex colors migrate to Custom, even if they resemble a preset, preserving the user's saved values and identity/creation dates. Explicit presets follow theme changes; overrides never start inheriting accidentally.
+Resolve presets from the table above using the resolved theme; Custom is an opaque six-digit hex value independent of theme. Never persist resolved preset hex values as though they were Custom. Explicit presets follow theme changes; overrides never start inheriting accidentally. The previous hex-string migration is development history, not a launch requirement; all prelaunch data may be discarded.
 
-Implemented interaction refinement, with user verification pending: Settings' continuous native Custom color input uses immediate local feedback with trailing persistence debounce, avoiding per-change save/disable cycles. Save silently while the wheel is open, without inline pending/saving/saved color text; show one success toast on picker commit/close only after the latest color is confirmed saved. Preset and remembered Custom selections save immediately, with success feedback after confirmation. Ordered preference writes protect newer selections and other settings; native commit, navigation, and backup boundaries flush pending color work. Failed saves retain an explicitly unsaved preview and actionable error without automatic retries. The shared picker remains draft-only in BookmarkEditor until Save changes. See [color wheel improvement](../color-wheel-improvement/spec.md) for timing, lifecycle limits, and user-owned acceptance scenarios.
+Implemented interaction refinement, with user verification pending: Settings' continuous native Custom color input uses immediate local feedback with trailing persistence debounce, avoiding per-change save/disable cycles. Save silently while the wheel is open, without inline pending/saving/saved color text; show one success toast on picker commit/close only after the latest color is confirmed saved. Preset and remembered Custom selections save immediately, with success feedback after confirmation. Ordered preference writes protect newer selections and other settings; native commit and navigation flush pending color work, independently of videos-only transfers. Failed saves retain an explicitly unsaved preview and actionable error without automatic retries. The shared picker remains draft-only in BookmarkEditor until Save changes. See [color wheel improvement](../color-wheel-improvement/spec.md) for timing, lifecycle limits, and user-owned acceptance scenarios.
 
 One resolver serves popup rows and previews; retain the host integration's existing behavior without restyling quick add. Future marker rendering must consume the same choice model. Do not implement markers or infer a marker rendering theme in this effort.
 
 ### Backup compatibility
 
-Exports use version 2 under the existing `youtube-timestamp-bookmarks` format identifier. Keep the existing video/bookmark identity, timestamp keys, title/name/creation metadata and marker visibility fields; represent bookmark color overrides and global default color using the canonical choice above, and include theme preference in settings. The implemented field schema and regression contracts are documented in the [popup specification](../popup-ui/spec.md#backup-format-and-persistence).
+The locally implemented [import/export rewrite](../import-export-rewrite/spec.md), with verification pending, supersedes the development version-2 settings-inclusive backup workflow and earlier import-acknowledgement requirements. New schema-1 exports include only selected videos/bookmarks, producer app version, and explicit bookmark color choices; inherited colors remain inherited. Theme, visibility, and global defaults are never transferred.
 
-Accept strict legacy version-1 backups as well as version 2. Convert legacy hex colors to Custom and missing theme to System. Reject unsupported versions or invalid new discriminants/colors/themes before mutations. Merge keeps current settings and duplicate metadata; Replace adopts incoming settings with preview and destructive acknowledgement. Continue whole-library coordination and atomic Replace semantics. Do not weaken existing validation to make the new format fit.
+Prelaunch version-1/version-2 backups are unsupported; no legacy adapters, migrations, or development-data preservation are required. Record-level invalid/ambiguous launch-schema entries are skipped with reasons; unusable/unsupported envelopes block import. Merge keeps existing titles/bookmark metadata; Replace atomically installs the accepted selected subset as the entire library without changing preferences. Both use selection/effect review and stale-library checks, with one final destructive Replace library action and no extra confirmation dialog. Detailed schema/validation/verification requirements belong in the linked rewrite spec, not a second design-system schema.
 
 ## Components gallery lifecycle
 
@@ -176,9 +178,9 @@ Remove `entrypoints/components/`, the gallery-only examples, fixtures and styles
 
 Issue 1's inventory, interaction, theme and keyboard evidence remains a historical record of the temporary gallery. Retiring that tooling does not remove the shared component contracts.
 
-Issue 2 is complete only when all real popup workflows use the components, themes survive reopening and follow OS changes correctly, legacy/current backup round trips preserve data, and the temporary link is removed. Capture actual extension-popup evidence, including native 560 × 600 px sizing and scrolling. A regular HTTP tab does not exercise Chromium's native popup autosizer; record any smaller browser-imposed cap separately.
+Issue 2's original acceptance and completed evidence remain historical cutover records, including its then-required legacy backup/migration behavior. The current launch contract instead requires schema-1 round trips and rejects prelaunch backups without preserving development data. Capture actual extension-popup evidence, including native 560 × 600 px sizing and scrolling. A regular HTTP tab does not exercise Chromium's native popup autosizer; record any smaller browser-imposed cap separately.
 
-Run existing source checks after implementation, inspect production artifacts, and record exact exercised scenarios in each issue. Keep permanent regressions for uncertain consumer-visible boundaries (migration, versioned validation, precedence, collisions), not component wiring/source text. Issue 1 established the shared components; issue 2 owns production migration and persistence.
+Run existing source checks after implementation, inspect production artifacts, and record exact exercised scenarios in each issue. Keep permanent regressions for uncertain consumer-visible boundaries (versioned validation, precedence, collisions), not component wiring/source text or obsolete development-data migration. Issue 1 established the shared components; issue 2's earlier production migration is historical.
 
 ### Implementation additions — 2026-10-02
 

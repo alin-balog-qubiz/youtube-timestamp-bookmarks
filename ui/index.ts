@@ -38,3 +38,5 @@ export { SettingGroup } from './components/SettingGroup';
 export { TimestampAdjuster } from './components/TimestampAdjuster';
 export { BookmarkEditor } from './components/BookmarkEditor';
 export { ImportPreview } from './components/ImportPreview';
+export { ImportConflictDetails } from './components/ImportConflictDetails';
+export { VideoSelector } from './components/VideoSelector';

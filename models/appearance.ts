@@ -25,11 +25,6 @@ export function validateColorChoice(value: unknown, field: string): ColorChoice 
   throw new Error(`${field}.type must be preset or custom`);
 }
 
-/** Legacy hex colors remain fixed Custom choices, including their original letter case. */
-export function validateLegacyColor(value: unknown, field: string): ColorChoice {
-  return { type: 'custom', value: validateHexColor(value, field) };
-}
-
 export function validateThemePreference(value: unknown, field: string): ThemePreference {
   if (value !== 'light' && value !== 'dark' && value !== 'system')
     throw new Error(`${field} must be light, dark, or system`);
@@ -57,7 +52,7 @@ function validateChoiceFields(choice: Record<string, unknown>, field: string, al
 }
 
 function validateHexColor(value: unknown, field: string): string {
-  if (typeof value !== 'string' || !hexColorPattern.test(value))
+  if (typeof value !== 'string' || value.length !== 7 || !hexColorPattern.test(value))
     throw new Error(`${field} must be a six-digit hex color (#rrggbb)`);
 
   return value;

@@ -128,8 +128,8 @@ export function useSettingsPersistence(
     if (await flushColor()) notifyColorSaved();
   }
 
-  // Called before navigation and backup snapshots, while Settings is still
-  // mounted. Unmount/unload cannot guarantee delivery from a destroyed popup.
+  // Called before navigation while Settings is still mounted.
+  // Unmount/unload cannot guarantee delivery from a destroyed popup.
   async function flushColor(): Promise<boolean> {
     do {
       await savePendingColor();
@@ -140,21 +140,7 @@ export function useSettingsPersistence(
     return !isDisposedRef.current && colorErrorRef.current === null;
   }
 
-  function adoptImportedPreferences(saved: MarkerPreferences) {
-    clearTimeout(colorTimerRef.current);
-    pendingColorRef.current = null;
-    colorRevisionRef.current++;
-    savedColorRevisionRef.current = null;
-    toastColorRevisionRef.current = null;
-    notifiedColorRevisionRef.current = null;
-    savedPreferencesRef.current = saved;
-    colorErrorRef.current = null;
-    setColorPreview(null);
-    setColorError(null);
-    onPreferencesChange(saved);
-  }
-
-  return { colorPreview, colorError, selectColor, commitColor, flushColor, savePreferences, adoptImportedPreferences };
+  return { colorPreview, colorError, selectColor, commitColor, flushColor, savePreferences };
 }
 
 function colorsMatch(left: ColorChoice, right: ColorChoice): boolean {

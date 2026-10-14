@@ -2,7 +2,7 @@ import { storage } from 'wxt/utils/storage';
 
 import { formatTimestamp } from '@/utils/bookmark-time';
 
-import { validateColorChoice, validateLegacyColor } from '@/models/appearance';
+import { validateColorChoice } from '@/models/appearance';
 import type { BookmarkDraft, CreateBookmarkResult, Video } from '@/models/bookmark';
 
 export const videoStoragePrefix = 'videos:v1:';
@@ -30,7 +30,7 @@ async function createBookmarkInStorage(
   const existingBookmark = storedVideo?.bookmarks[timestamp];
   const updatedTitle = title?.trim();
   const titleChanged = !!updatedTitle && updatedTitle !== storedVideo?.title;
-  if (existingBookmark && !titleChanged && storedVideo === savedVideo)
+  if (existingBookmark && !titleChanged)
     return 'already-saved';
 
   const video: Video = storedVideo
@@ -134,24 +134,14 @@ export async function listVideos(): Promise<Video[]> {
     .filter((video) => Object.keys(video.bookmarks).length > 0);
 }
 
-/** Read-only normalization; callers persist migrated records only through the background queues. */
+/** Validate current stored colors without converting or modifying the record. */
 export function normalizeStoredVideo(video: Video): Video {
-  let bookmarks: Video['bookmarks'] | undefined;
   for (const [timestamp, bookmark] of Object.entries(video.bookmarks)) {
-    if (!Object.hasOwn(bookmark, 'color')) continue;
-
-    const field = `Video "${video.id}".bookmarks["${timestamp}"].color`;
-    if (typeof bookmark.color !== 'string') {
-      validateColorChoice(bookmark.color, field);
-      continue;
-    }
-
-    const color = validateLegacyColor(bookmark.color, field);
-    bookmarks ??= { ...video.bookmarks };
-    bookmarks[Number(timestamp)] = { ...bookmark, color };
+    if (Object.hasOwn(bookmark, 'color'))
+      validateColorChoice(bookmark.color, `Video "${video.id}".bookmarks["${timestamp}"].color`);
   }
 
-  return bookmarks ? { ...video, bookmarks } : video;
+  return video;
 }
 
 export function getVideoStorageKey(videoId: string) {

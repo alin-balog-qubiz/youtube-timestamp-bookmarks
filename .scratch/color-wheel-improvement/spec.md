@@ -2,6 +2,8 @@
 
 Status: implemented locally — user verification pending
 
+The locally implemented [import/export rewrite](../import-export-rewrite/spec.md), with verification pending, supersedes this effort's settings-inclusive backup coupling. Historical implementation notes below describe the previous transfer code; current transfers neither include nor apply preferences.
+
 ## Request and boundary
 
 The user reports that selecting colors in the native color wheel triggers autosaves and causes the UI to glitch. Keep the native picker, but debounce Settings' Custom default-marker-color persistence so dragging remains responsive.
@@ -37,14 +39,14 @@ The delay is an internal constant, not a new user setting. Do not debounce local
 
 - Preserve the final selection when the native picker normally commits/closes or the user navigates within the popup: flush a pending color at a reliable commit/navigation boundary rather than silently discarding it. A flush replaces the scheduled save, not duplicates it.
 - Native picker input/commit event behavior must be checked in the target Chromium browser during authorized verification; do not assume React `onChange` means the native picker has closed.
-- Coordinate pending color intent with backup export and confirmed imports so export does not silently omit an intended committed change and an old timer cannot overwrite imported settings.
+- Under the approved rewrite, videos-only export/import must not depend on flushing the global default color or adopt imported preferences. Preserve normal picker commit/navigation persistence and ordered preference writes independently; show settings failures honestly without treating settings as transfer data.
 - Clean up timers and ignore stale responses after disposal. Abrupt popup destruction before a commit/debounce deadline is a lifecycle risk: do not promise a durable save based solely on async React-unmount or unload cleanup. Record the actual supported behavior when implementing and verifying.
 
 ## Implementation direction
 
 Keep persistence scheduling in the Settings flow, with local preview state separate from committed preferences. The reusable ColorPicker should remain usable by a draft-only editor. A small input-versus-commit distinction may be appropriate if needed for native picker completion; do not introduce a generic autosave framework, another settings store, or a custom color wheel.
 
-Retain existing color choices, theme resolution, inheritance, storage validation, background mutation ownership, and backup formats. Player markers continue to reflect persisted settings; live broadcast of every unsaved picker movement is not requested.
+Retain existing color choices, theme resolution, inheritance, storage validation, and background mutation ownership. Transfer formats and settings exclusion follow the separate [import/export rewrite](../import-export-rewrite/spec.md); do not preserve obsolete settings-inclusive backup coupling. Player markers continue to reflect persisted settings; live broadcast of every unsaved picker movement is not requested.
 
 ## Acceptance scenarios
 
@@ -55,7 +57,7 @@ Retain existing color choices, theme resolution, inheritance, storage validation
 5. Commit/close the native picker before the deadline: the latest selection is committed once, with one confirmed success toast and no stale timer or duplicate toast on subsequent blur. If it already saved during a pause, closing still shows one toast without another write. Navigation within the popup also flushes pending color work. Separately record behavior on abrupt popup closure.
 6. A failed save shows an error rather than success and does not misrepresent an unsaved preview as persisted.
 7. In the bookmark editor, select a color and immediately Save changes: the latest color is included. Repeat with Cancel: stored bookmark color is unchanged.
-8. Pending color work cannot restore pre-import settings after a confirmed import; export includes the latest committed color.
+8. Under the approved rewrite, pending color work remains independent of import/export: transfers do not adopt preferences, and exported JSON contains no global default color/theme/visibility. Both import modes leave current preferences intact; normal queued color intent may still persist as a separate settings operation.
 
 ## Related contracts and verification
 
@@ -64,6 +66,8 @@ This spec elaborates [product scope](../../docs/scope.md) and the [design-system
 No tests, builds, or commits were run for this implementation. Runtime acceptance remains user-owned. Verification must exercise the real native color picker, not only synthetic change events, because the reported defect concerns interaction stability. Native Chromium input/change/blur timing, in-flight persistence, editor Save/Cancel, and backup scenarios above remain unverified.
 
 ## Implementation — 2026-10-13
+
+The backup flush/settings-adoption behavior recorded below is historical implementation state, removed by the import/export rewrite on 2026-10-14; it does not override the videos-only transfer boundary. Normal picker commit/navigation persistence remains independent.
 
 - `entrypoints/popup/hooks/useSettingsPersistence.ts` owns Settings' local color preview, trailing timer (currently 100 ms), and ordered preference writes. Each write merges only its changed fields into the latest confirmed preferences. Superseded color intents are skipped before dispatch; already-dispatched writes complete before newer writes. Unchanged choices, including hex values differing only by letter case, do not cause writes.
 - `ColorPicker` reports native `input` events immediately. Settings schedules these; BookmarkEditor continues receiving immediate draft changes. An actual DOM `change` event is a separate commit signal, not React's synthesized `onChange`. Blur outside the picker also flushes; moving focus to another color choice leaves that choice free to supersede the timer.

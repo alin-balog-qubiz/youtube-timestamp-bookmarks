@@ -9,8 +9,8 @@ General engineering guidance lives in the [coding-standards skill](../../.agents
 - Top-level `entrypoints/`: WXT registration, lifecycle wiring, and thin message dispatch. Keep player detection, feature UI behavior, and persistence operations in their owning modules.
 - `services/background/`: background-owned bookmark and settings handlers.
 - `services/client/`: YouTube-facing player lifecycle, player message handlers, and quick-add UI.
-- `services/popup/`: active-tab discovery and player navigation requested by popup controllers.
-- `services/storage/`: bookmark persistence/serialization, preferences/normalization, and cohesive backup operations/validation. Existing popup reads remain direct; mutations and import/export coordination remain background-owned.
+- `services/popup/`: active-tab discovery, player navigation, and export filenames/download resource ownership requested by popup controllers.
+- `services/storage/`: bookmark persistence/serialization, preferences/validation, and cohesive backup operations/validation. Existing popup reads remain direct; mutations and import/export coordination remain background-owned.
 - `services/messaging/`: context-local handler registration and neutral bookmark/settings request adapters used to reach the background.
 - `models/`: focused shared data/context contracts and domain validators. Module-owned types stay with their implementation; component props and page state stay local.
 - `utils/`: context-independent rules, such as URL classification; `ui/utils/` owns UI support. Keep browser subscriptions, player DOM access, and feature lifecycle state with their owners.
