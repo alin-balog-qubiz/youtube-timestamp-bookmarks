@@ -3,6 +3,7 @@ import type { ImportMode, ImportPreview as ImportPreviewData, ValidatedImport } 
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 import { ImportConflictDetails } from './ImportConflictDetails';
+import { ImportVideoGroups } from './ImportVideoGroups';
 import { Notice } from './Notice';
 import { RadioChoice } from './RadioChoice';
 import { Skeleton } from './Skeleton';
@@ -125,26 +126,22 @@ export function ImportPreview({
             {diagnostics.length > 0 && (
               <details className="yb-transfer-diagnostics">
                 <summary>Validation omissions ({validated.skippedVideos} videos · {validated.skippedBookmarks} bookmarks)</summary>
-                <ul>
-                  {diagnostics.map((diagnostic, index) => (
-                    <li key={`${diagnostic.location}-${index}`}>
-                      <strong>{diagnostic.videoTitle?.trim() || diagnostic.videoId || diagnostic.location}{diagnostic.timestamp === undefined ? '' : ` · ${diagnostic.timestamp}s`}</strong>
+                <ImportVideoGroups
+                  items={diagnostics}
+                  renderItem={(diagnostic) => (
+                    <>
                       <span className="yb-dialog-help">{diagnostic.location}</span>
                       <p>{diagnostic.reason}</p>
-                    </li>
-                  ))}
-                </ul>
+                    </>
+                  )}
+                />
               </details>
             )}
             {preview && preview.duplicates.length > 0 && (
               <details className="yb-transfer-diagnostics">
                 <summary>Identical duplicates ({preview.duplicates.length})</summary>
-                <ul>{preview.duplicates.map((duplicate) => (
-                  <li key={`${duplicate.videoId}-${duplicate.timestamp}`}>
-                    <strong>{duplicate.videoTitle?.trim() || duplicate.videoId} · {duplicate.timestamp}s</strong>
-                    <p>Identical bookmark. Existing kept.</p>
-                  </li>
-                ))}</ul>
+                <p>Identical bookmarks. Existing kept.</p>
+                <ImportVideoGroups items={preview.duplicates} />
               </details>
             )}
             <ImportConflictDetails title="Bookmark metadata conflicts" conflicts={bookmarkConflicts} />

@@ -1,5 +1,7 @@
 import type { ImportConflict } from '@/models/backup';
 
+import { ImportVideoGroups } from './ImportVideoGroups';
+
 interface ImportConflictDetailsProps {
   title: string;
   conflicts: readonly ImportConflict[];
@@ -11,10 +13,10 @@ export function ImportConflictDetails({ title, conflicts }: ImportConflictDetail
   return (
     <details className="yb-transfer-diagnostics">
       <summary>{title} ({conflicts.length})</summary>
-      <ul>{conflicts.map((conflict, index) => (
-        <li key={`${conflict.videoId}-${conflict.timestamp ?? 'title'}-${index}`}>
-          <strong>{conflict.videoTitle?.trim() || conflict.videoId}{conflict.timestamp === undefined ? ' · Video title' : ` · ${conflict.timestamp}s`}</strong>
-          <p>Existing kept.</p>
+      <p>Existing kept.</p>
+      <ImportVideoGroups
+        items={conflicts}
+        renderItem={(conflict) => (
           <dl className="yb-transfer-conflict-fields">
             {conflict.fields.map((field) => (
               <div key={field.field}>
@@ -24,8 +26,8 @@ export function ImportConflictDetails({ title, conflicts }: ImportConflictDetail
               </div>
             ))}
           </dl>
-        </li>
-      ))}</ul>
+        )}
+      />
     </details>
   );
 }

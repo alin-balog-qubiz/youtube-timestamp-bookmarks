@@ -264,6 +264,30 @@
   margin: 4px 0 0;
 }
 
+.yb-import-video-groups {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.yb-import-video-group {
+  min-width: 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--yb-border);
+}
+
+.yb-import-group-count {
+  color: var(--yb-muted);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.yb-import-video-group summary > .yb-dialog-help {
+  display: block;
+  margin: 3px 0 0;
+  font-weight: 400;
+}
+
 .yb-transfer-conflict-fields {
   display: grid;
   gap: 8px;

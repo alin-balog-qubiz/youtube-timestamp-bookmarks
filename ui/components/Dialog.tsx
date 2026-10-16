@@ -41,7 +41,7 @@ export function Dialog({ open, onClose, title, description, children, footer, pe
 
     const dialog = event.currentTarget;
     const controls = Array.from(dialog.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]',
+      'button, [href], input, select, textarea, summary, [tabindex]',
     )).filter((control) => control.tabIndex >= 0 && !control.matches(':disabled') &&
       !control.closest('[inert]') && control.getClientRects().length > 0);
     const first = controls[0];
