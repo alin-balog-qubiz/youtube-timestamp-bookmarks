@@ -2,7 +2,7 @@
   "name": "youtube-timestamp-bookmarks",
   "description": "Save and revisit moments in YouTube videos.",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",

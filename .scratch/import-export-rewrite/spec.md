@@ -10,11 +10,11 @@ Prepare the videos/bookmarks import/export workflow for launch, with selectable 
 
 [Product scope](../../docs/scope.md) remains the product-intent authority. This spec supersedes the backup/import/export requirements in [popup workflow](../popup-ui/spec.md), [design system](../design-system/spec.md), and the backup-specific settings coupling in [color wheel improvement](../color-wheel-improvement/spec.md). Their completed issues and implementation notes remain historical evidence, not requirements to transfer settings.
 
-The approval phase created documentation only. Local implementation followed on 2026-10-14; the user requested no tests, builds, or commits. No runtime or release verification is claimed, and app metadata remains `0.0.0` until the launch gate below is satisfied.
+The approval phase created documentation only. Local implementation followed on 2026-10-14; the user requested no tests, builds, or commits. No runtime or release verification is claimed. App metadata was set to `1.0.0` on 2026-10-20 at the user's request; that metadata change does not satisfy the launch verification gate.
 
 ## Current implementation baseline
 
-- `package.json` currently declares app version `0.0.0`; `wxt.config.ts` has no explicit manifest-version override.
+- `package.json` currently declares app version `1.0.0`; `wxt.config.ts` has no explicit manifest-version override.
 - `models/backup.ts` and `services/storage/backup.ts` use backup version 2, accept version 1, and transfer settings together with videos.
 - The current popup exports the entire library/settings and previews imports with destructive acknowledgement and stale-snapshot checks.
 - Current development storage uses authoritative per-video records, a whole-library mutation barrier, and timestamp-keyed bookmark objects. Those architectural patterns remain useful, but prelaunch records/keys are not a compatibility or preservation obligation.
@@ -144,7 +144,7 @@ Schema 1 is the first supported release file format. App 1.0.0 does not inherit 
 ## App and schema versioning
 
 - package.json version is the app-version source of truth. Generated extension manifest metadata, package artifacts, and export appVersion must agree with it; do not introduce separately maintained version constants. Keep package-lock root metadata synchronized when bumping.
-- Set the launch release to 1.0.0 after the rewrite is implemented, verified, and launch-ready. This approved spec does not bump 0.0.0 or claim launch readiness.
+- The requested app metadata version is `1.0.0`. This version change does not certify the rewrite as verified or launch-ready; release verification remains required.
 - Patch: compatible fixes. Minor: compatible features. Major: breaking changes to supported contracts. File-schema compatibility is versioned independently: compatible app releases need not increment schemaVersion; incompatible wire changes require a new schema and explicit import support policy.
 - schemaVersion, not appVersion ordering, decides import compatibility. A newer producer app version with a supported schema is acceptable. Unsupported schemas are blocked without mutation.
 - Keep the format identifier and a single authoritative persisted model; no storage-key rename is required merely to reset file-schema numbering. Prelaunch storage compatibility is not required. Release verification must inspect the actual built manifest and packaged artifact, not only source declarations.
@@ -181,4 +181,4 @@ The user subsequently replaced the legacy-support decision with a clean launch b
 - `services/popup/backup-download.ts` owns safe filenames, indented JSON, browser-confirmed completion/interruption, and temporary download resources. Producer app version comes from generated manifest metadata, with no separately maintained version constant.
 - Removed development backup adapters, legacy hex conversion, stored appearance migrations, imported preference adoption, and transfer-triggered color flushing. No extension storage reset was performed; settings persistence remains independent.
 - Static integration review only. No tests, builds, lint/format commands, runtime scenarios, commits, or artifact regeneration were performed. The single-batch persistence failure guarantee, popup focus/scrolling, downloads, concurrent mutations, and release artifacts still require the acceptance checks above.
-- Package and lockfile remain synchronized at `0.0.0`; launch `1.0.0` is deliberately gated on verified readiness rather than inferred from local edits.
+- Package and lockfile are synchronized at `1.0.0` per the user's version request. Launch/runtime readiness is still unverified; package version alone does not satisfy the release checks.
