@@ -16,7 +16,7 @@ YouTube Bookmarks is a Chrome extension for saving and revisiting timestamps in 
 - **Choose your look.** Select Light, Dark, or System appearance; show or hide timeline markers; choose a default marker color and optional per-bookmark colors.
 - **Back up your library.** Import and export readable JSON containing videos and bookmarks, without transferring appearance or other settings.
 
-Bookmarks and preferences are stored locally in the extension. There is no account or cross-device sync. Playback integration supports standard YouTube watch pages; Shorts, live streams, embeds, and `youtu.be` pages are not supported.
+After agreeing to the first-use privacy notice, the extension uses current YouTube video information only to provide its bookmarking features. Read the [privacy policy](PRIVACY.md) for the data handled, local storage, and import/export details. Playback integration supports standard YouTube watch pages; Shorts, live streams, embeds, and `youtu.be` pages are not supported.
 
 ## Install from source
 

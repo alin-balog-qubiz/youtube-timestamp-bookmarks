@@ -16,6 +16,11 @@ A personal Chrome extension for quickly saving moments in YouTube videos and ret
 
 If active-tab context cannot be read, show a concise recovery notice: **Having trouble reading this tab’s context. Try opening YouTube.** YouTube is a link opening a new tab. Keep All videos and Settings available and This video unavailable until a supported context is known; the recovery link does not claim that context lookup has succeeded.
 
+## Privacy disclosure and consent
+
+Before accessing video, bookmark, or preference data, the popup presents a one-time privacy disclosure describing the information handled, local extension storage, and user-initiated JSON transfers. Consent requires an unchecked-by-default checkbox and an explicit **Agree and continue** action. Closing the popup without agreeing leaves popup data views and YouTube integration disabled. The content script reads only the stored consent decision until consent is granted; after grant, it may read the supported video context and use the existing bookmark workflow. Link the full policy from the in-product disclosure and publish `PRIVACY.md` in the Chrome Web Store privacy-policy field. This required disclosure is not a general Welcome or Guide page.
+
+
 ## Bookmark information
 
 A bookmark belongs to a YouTube video ID and a whole-second position; together they identify it. It has an optional name, an optional color-choice override, and a creation date; the video also has a stored title for display. Unnamed bookmarks display their formatted time and **Unnamed bookmark** without persisting that fallback as a name. Timestamp adjustment moves that identity within the same video, preserves creation date, and rejects collisions. The storage contract and precise field shapes belong in the relevant implementation spec and code, not in this document.

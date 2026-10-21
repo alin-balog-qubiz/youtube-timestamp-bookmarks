@@ -115,3 +115,15 @@ export interface ImportBackupRequest {
 }
 
 export type ImportBackupResponse = Result<ImportCommit>;
+
+export interface GetPrivacyConsentRequest {
+  type: 'privacy:get-consent';
+}
+
+export type GetPrivacyConsentResponse = Result<boolean>;
+
+export interface GrantPrivacyConsentRequest {
+  type: 'privacy:grant-consent';
+}
+
+export type GrantPrivacyConsentResponse = Result<boolean>;

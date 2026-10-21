@@ -23,6 +23,10 @@ The following slices record the POC's implementation sequence, not the new desig
 
 Each slice includes its required runtime/storage operations and smoke acceptance, not just visual controls. Setup deliberately stops at page headings and working navigation. This video owns shared bookmark mutations, player integration, and color resolution; later pages reuse those contracts. Settings is last so restored data and preference effects can be checked through both completed bookmark pages. Marker rendering remains separate from these popup slices.
 
+## First-use privacy consent
+
+Before loading active-tab context, settings, bookmarks, or transfer data, show a one-time popup disclosure covering the current YouTube video's ID/title, save-time playback position, locally stored bookmarks/preferences, and user-initiated JSON import/export. Require an unchecked checkbox and explicit **Agree and continue** action. The popup remains on this disclosure and the content script reads only the consent setting until consent is stored. Closing the popup without agreeing leaves app-data reads and YouTube integration inactive. Link the full privacy policy from the disclosure; consent-storage failures remain visible and block use. This required consent gate is not a general Welcome or Guide page.
+
 ## Pages and navigation
 
 The popup has exactly three pages: **All videos**, **This video**, and **Settings**.

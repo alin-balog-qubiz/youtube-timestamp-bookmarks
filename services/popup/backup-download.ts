@@ -6,7 +6,13 @@ export function getExportFilename(name: string, date = new Date()): string {
   const pad = (value: number) => String(value).padStart(2, '0');
   const defaultName = `youtube-bookmarks-${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
   // Treat the supplied text as a name, not a path; keep meaningful path segments.
-  let base = name.trim().replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/g, '-');
+  let base = '';
+  for (const character of name.trim()) {
+    const characterCode = character.charCodeAt(0);
+    const isControlCharacter = characterCode <= 0x1f || characterCode === 0x7f;
+    const isForbiddenFilenameCharacter = '<>:"/\\|?*'.includes(character);
+    base += isControlCharacter || isForbiddenFilenameCharacter ? '-' : character;
+  }
   base = base.replace(/[.\s]+$/g, '').replace(/(?:\.json[.\s]*)+$/i, '').replace(/[.\s]+$/g, '');
   if (!base) base = defaultName;
   if (/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(base)) base = `_${base}`;

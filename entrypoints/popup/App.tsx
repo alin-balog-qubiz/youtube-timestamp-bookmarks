@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 
-import { getActiveTabContext } from '@/services/popup';
+import { getPrivacyConsent, grantPrivacyConsent } from '@/services/messaging/privacy-requests';
 import { getSettings } from '@/services/messaging/settings-requests';
+import { getActiveTabContext } from '@/services/popup';
 
 import type { ActiveTabContext } from '@/models/active-tab';
 import type { MarkerPreferences } from '@/models/marker-preferences';
 import type { PopupPage } from '@/ui';
 
 import { Button, Link, Notice, PopupHeader, Skeleton, ThemeProvider } from '@/ui';
+import PrivacyConsentPage from './pages/PrivacyConsentPage';
 import AllVideosPage from './pages/AllVideosPage';
 import ThisVideoPage from './pages/ThisVideoPage';
 import SettingsPage from './pages/SettingsPage';
@@ -33,6 +35,10 @@ export default function App() {
   const [isReadingSettings, setIsReadingSettings] = useState(true);
   const [settingsReadError, setSettingsReadError] = useState<string | null>(null);
   const [settingsRetryId, setSettingsRetryId] = useState(0);
+  const [privacyConsent, setPrivacyConsent] = useState<boolean | null>(null);
+  const [isReadingPrivacyConsent, setIsReadingPrivacyConsent] = useState(true);
+  const [privacyConsentError, setPrivacyConsentError] = useState<string | null>(null);
+  const [privacyConsentRetryId, setPrivacyConsentRetryId] = useState(0);
 
   const beforeSettingsLeaveRef = useRef<(() => Promise<boolean>) | null>(null);
   const isNavigatingRef = useRef(false);
@@ -41,6 +47,33 @@ export default function App() {
   const { activeTabContext, selectedPage } = popupState;
 
   useEffect(() => {
+    let isDisposed = false;
+
+    void getPrivacyConsent()
+      .then((hasConsent) => {
+        if (isDisposed) return;
+
+        setPrivacyConsent(hasConsent);
+        setPrivacyConsentError(null);
+      })
+      .catch((failure: unknown) => {
+        if (isDisposed) return;
+
+        setPrivacyConsent(null);
+        setPrivacyConsentError(failure instanceof Error ? failure.message : 'Unable to read privacy consent.');
+      })
+      .finally(() => {
+        if (!isDisposed) setIsReadingPrivacyConsent(false);
+      });
+
+    return () => {
+      isDisposed = true;
+    };
+  }, [privacyConsentRetryId]);
+
+  useEffect(() => {
+    if (privacyConsent !== true) return;
+
     let isDisposed = false;
     browser.storage.onChanged.addListener(handleSettingsChanged);
     void readSettings();
@@ -72,9 +105,11 @@ export default function App() {
         if (!isDisposed && readId === latestSettingsReadIdRef.current) setIsReadingSettings(false);
       }
     }
-  }, [settingsRetryId]);
+  }, [settingsRetryId, privacyConsent]);
 
   useEffect(() => {
+    if (privacyConsent !== true) return;
+
     let isDisposed = false;
     let latestRefreshId = 0;
     let refreshTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -99,8 +134,7 @@ export default function App() {
       clearTimeout(refreshTimeout);
       const refreshId = ++latestRefreshId;
       const detectedContext = await getActiveTabContext();
-      if (isDisposed || refreshId !== latestRefreshId)
-        return;
+      if (isDisposed || refreshId !== latestRefreshId) return;
 
       setPopupState((currentState) => {
         const hasSupportedVideo = detectedContext.status === 'supported';
@@ -146,10 +180,10 @@ export default function App() {
     }
 
     function handleTabUpdated(_tabId: number, change: { url?: string; status?: string }, tab: { active: boolean }) {
-      if (tab.active && (change.url !== undefined || change.status !== undefined)) 
+      if (tab.active && (change.url !== undefined || change.status !== undefined))
         invalidateContext();
     }
-  }, []);
+  }, [privacyConsent]);
 
   async function navigate(destinationPage: PopupPage) {
     if (destinationPage === selectedPage || isNavigatingRef.current) return;
@@ -177,6 +211,17 @@ export default function App() {
     setIsReadingSettings(false);
   }
 
+  async function acceptPrivacyConsent() {
+    await grantPrivacyConsent();
+    setPrivacyConsent(true);
+    setPrivacyConsentError(null);
+  }
+
+  function retryPrivacyConsentRead() {
+    setIsReadingPrivacyConsent(true);
+    setPrivacyConsentRetryId((currentId) => currentId + 1);
+  }
+
   const contextNotice = activeTabContext.status === 'loading'
     ? <Notice>Checking the active tab…</Notice>
     : activeTabContext.status === 'error'
@@ -187,6 +232,22 @@ export default function App() {
         </Notice>
       )
       : null;
+
+  if (privacyConsent !== true) {
+    return (
+      <ThemeProvider preference="system" className="popup">
+        <main className="popup-content">
+          <PrivacyConsentPage
+            isCheckingConsent={isReadingPrivacyConsent}
+            consentReadError={privacyConsentError}
+            onRetry={retryPrivacyConsentRead}
+            onAccept={acceptPrivacyConsent}
+          />
+        </main>
+      </ThemeProvider>
+    );
+  }
+
 
   return (
     <ThemeProvider preference={preferences?.theme ?? 'system'} className="popup">

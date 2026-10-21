@@ -38,3 +38,45 @@
 .popup-content .yb-bookmark-list {
   margin-top: 16px;
 }
+
+.privacy-consent {
+  display: grid;
+  gap: 12px;
+}
+
+.privacy-consent h1 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.privacy-consent p,
+.privacy-consent li {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.privacy-consent ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.privacy-consent-agreement {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.privacy-consent-agreement input {
+  flex: none;
+  margin: 3px 0 0;
+}
+
+.privacy-consent-policy,
+.privacy-consent-close {
+  font-size: 12px !important;
+}
